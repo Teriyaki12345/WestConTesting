@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application")
+    // id("com.android.application")
     // Add the  google services Gradle plugin
     id("com.google.gms.google-services")
 
