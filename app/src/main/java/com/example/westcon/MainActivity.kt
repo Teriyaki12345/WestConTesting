@@ -27,11 +27,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             WestConTheme {
-                // Tracking 4 screens now: landing, signup, signup2, and join
-                var currentScreen by remember { mutableStateOf("landing") }
+                // Initial screen is now onboarding
+                var currentScreen by remember { mutableStateOf("onboarding") }
 
                 Surface(modifier = Modifier.fillMaxSize()) {
                     when (currentScreen) {
+                        "onboarding" -> {
+                            OnboardingScreen(
+                                onFinish = { currentScreen = "landing" }
+                            )
+                        }
+
                         "landing" -> {
                             WestconLoginScreen(
                                 onSignUpClick = { currentScreen = "signup" },
@@ -52,8 +58,7 @@ class MainActivity : ComponentActivity() {
                             // SignUpStepTwoScreen is from signup2.kt
                             SignUpStepTwoScreen(
                                 onNextClick = {
-                                    // Eventually move to Home Screen here
-                                    currentScreen = "landing"
+                                    currentScreen = "dashboard"
                                 }
                             )
                         }
@@ -61,8 +66,13 @@ class MainActivity : ComponentActivity() {
                         "join" -> {
                             // LoginScreen is from join.kt
                             LoginScreen(
-                                onBackClick = { currentScreen = "landing" }
+                                onBackClick = { currentScreen = "landing" },
+                                onLoginSuccess = { currentScreen = "dashboard" }
                             )
+                        }
+
+                        "dashboard" -> {
+                            DashboardScreen()
                         }
                     }
                 }

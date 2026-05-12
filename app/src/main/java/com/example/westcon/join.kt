@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun LoginScreen(onBackClick: () -> Unit) {
+fun LoginScreen(onBackClick: () -> Unit, onLoginSuccess: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         // Background Image
         Image(
@@ -58,8 +58,8 @@ fun LoginScreen(onBackClick: () -> Unit) {
 
             // Text Fields
             SignUpTextField(
-                label = "Student ID",
-                icon = R.drawable.tdesign_education_filled
+                label = "Email",
+                icon = R.drawable.email
             )
 
             SignUpTextField(
@@ -86,7 +86,7 @@ fun LoginScreen(onBackClick: () -> Unit) {
 
             // Enter Button
             Button(
-                onClick = { /* Handle Login */ },
+                onClick = onLoginSuccess,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),

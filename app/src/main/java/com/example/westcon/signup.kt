@@ -57,7 +57,6 @@ fun RegisterScreen(onJoinClick: () -> Unit, onBackClick: () -> Unit) {
             Spacer(modifier = Modifier.height(0.dp))
 
             // Fields
-            SignUpTextField(label = "Student ID", icon = R.drawable.tdesign_education_filled)
             SignUpTextField(label = "WVSU email", icon = R.drawable.email)
 
             // Password fields with the Eye Icon logic

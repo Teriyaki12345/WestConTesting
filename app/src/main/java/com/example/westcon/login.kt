@@ -73,9 +73,9 @@ fun WestconLoginScreen(onSignUpClick: () -> Unit, onLoginClick: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(painterResource(R.drawable.tdesign_education_filled), null, tint = WestconYellow, modifier = Modifier.size(24.dp))
+                    Icon(painterResource(R.drawable.email), null, tint = WestconYellow, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
-                    Text("Sign up with Student ID", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                    Text("Sign up with Email", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                 }
             }
 
@@ -89,14 +89,14 @@ fun WestconLoginScreen(onSignUpClick: () -> Unit, onLoginClick: () -> Unit) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        painter = painterResource(R.drawable.person),
+                        painter = painterResource(R.drawable.email),
                         contentDescription = null,
                         tint = WestconDarkBlue,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "Login with Student ID",
+                        "Login with Email",
                         color = WestconDarkBlue,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
