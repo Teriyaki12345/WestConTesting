@@ -1,4 +1,4 @@
-package com.example.westcon
+package com.example.westcon.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -24,37 +24,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun DashboardScreen() {
+fun DashboardScreen(onNotificationClick: () -> Unit = {}) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    var showNotifications by remember { mutableStateOf(false) }
 
-    if (showNotifications) {
-        NotificationScreen(onBackClick = { showNotifications = false })
-    } else {
-        Scaffold(
-            topBar = { DashboardTopBar(onNotificationClick = { showNotifications = true }) },
-            bottomBar = { DashboardBottomNav(selectedTab) { selectedTab = it } },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { /* TODO */ },
-                    containerColor = WestconDarkBlue,
-                    contentColor = Color.White,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Post")
-                }
+    Scaffold(
+        topBar = { DashboardTopBar(onNotificationClick = onNotificationClick) },
+        bottomBar = { DashboardBottomNav(selectedTab) { selectedTab = it } },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { /* TODO */ },
+                containerColor = WestconDarkBlue,
+                contentColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Post")
             }
-        ) { paddingValues ->
-            Box(modifier = Modifier.padding(paddingValues)) {
-                when (selectedTab) {
-                    0 -> HomeFeed()
-                    1 -> FreedomWallScreen()
-                    2 -> MessageScreen()
-                    3 -> ProfileScreen()
-                    else -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Screen $selectedTab Coming Soon", fontFamily = MomotrustFontFamily)
-                        }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            when (selectedTab) {
+                0 -> HomeFeed()
+                1 -> FreedomWallScreen()
+                2 -> MessageScreen()
+                3 -> ProfileScreen()
+                else -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Screen $selectedTab Coming Soon", fontFamily = MomotrustFontFamily)
                     }
                 }
             }
@@ -64,6 +59,8 @@ fun DashboardScreen() {
 
 @Composable
 fun HomeFeed() {
+    val posts by com.example.westcon.data.FirebaseManager.getSkillPosts().collectAsState(initial = emptyList())
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -71,7 +68,7 @@ fun HomeFeed() {
     ) {
         item { PostSkillCard() }
         item { CategoryChips() }
-        items(samplePosts) { post ->
+        items(posts) { post ->
             SkillPostCard(post)
         }
     }
@@ -214,32 +211,8 @@ fun CategoryChips() {
     }
 }
 
-data class Post(
-    val author: String,
-    val department: String,
-    val timeAgo: String,
-    val category: String,
-    val title: String,
-    val description: String,
-    val isAnonymous: Boolean = false
-)
-
-val samplePosts = listOf(
-    Post(
-        "Maria Clara", "CAS", "2h ago", "Technology",
-        "Teaching Python Basics",
-        "I can help you get started with Python programming! We'll cover variables, loops, and basic functions. Perfect for CCIS students struggling with Intro to Computing."
-    ),
-    Post(
-        "Anonymous Student", "CON", "5h ago", "Academics",
-        "Anatomy Mnemonics & Review",
-        "Offering review sessions for Anatomy and Physiology. I have a collection of mnemonics that helped me ace my prelims. Looking to exchange for Statistics help!",
-        true
-    )
-)
-
 @Composable
-fun SkillPostCard(post: Post) {
+fun SkillPostCard(post: com.example.westcon.data.SkillPost) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -271,8 +244,8 @@ fun SkillPostCard(post: Post) {
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(post.author, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("${post.department} • ${post.timeAgo}", color = Color.Gray, fontSize = 12.sp)
+                        Text(post.authorName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("${post.department} • 2h ago", color = Color.Gray, fontSize = 12.sp)
                     }
                 }
                 

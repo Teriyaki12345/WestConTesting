@@ -1,5 +1,6 @@
-package com.example.westcon
+package com.example.westcon.ui.screens
 
+import com.example.westcon.R
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,11 +14,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 
 @Composable
 fun RegisterScreen(onJoinClick: () -> Unit, onBackClick: () -> Unit) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.bg_login),
@@ -54,19 +63,32 @@ fun RegisterScreen(onJoinClick: () -> Unit, onBackClick: () -> Unit) {
                 fontFamily = MomotrustFontFamily
             )
 
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
+            }
+
             Spacer(modifier = Modifier.height(0.dp))
 
             // Fields
-            SignUpTextField(label = "WVSU email", icon = R.drawable.email)
+            SignUpTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = "WVSU email",
+                icon = R.drawable.email
+            )
 
             // Password fields with the Eye Icon logic
             SignUpTextField(
+                value = password,
+                onValueChange = { password = it },
                 label = "Password",
                 icon = R.drawable.lock,
                 isPassword = true,
                 showEyeIcon = true // Enable the eye toggle here
             )
             SignUpTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
                 label = "Re-enter password",
                 icon = R.drawable.lock,
                 isPassword = true,
@@ -75,12 +97,38 @@ fun RegisterScreen(onJoinClick: () -> Unit, onBackClick: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = onJoinClick,
+                onClick = {
+                    if (password != confirmPassword) {
+                        errorMessage = "Passwords do not match"
+                        return@Button
+                    }
+                    if (email.isEmpty() || password.isEmpty()) {
+                        errorMessage = "Please fill all fields"
+                        return@Button
+                    }
+                    
+                    isLoading = true
+                    errorMessage = null
+                    scope.launch {
+                        val result = com.example.westcon.data.FirebaseManager.signUp(email, password)
+                        isLoading = false
+                        if (result.isSuccess) {
+                            onJoinClick()
+                        } else {
+                            errorMessage = result.exceptionOrNull()?.message ?: "Signup failed"
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = !isLoading,
                 shape = RoundedCornerShape(15.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF001229))
             ) {
-                Text("Join WESTCON", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                if (isLoading) {
+                    CircularProgressIndicator(color = WestconYellow, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Join WESTCON", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                }
             }
 
             TextButton(

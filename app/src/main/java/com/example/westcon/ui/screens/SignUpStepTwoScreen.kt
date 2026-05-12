@@ -1,5 +1,6 @@
-package com.example.westcon
+package com.example.westcon.ui.screens
 
+import com.example.westcon.R
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,8 +15,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import kotlinx.coroutines.launch
+import com.example.westcon.data.FirebaseManager
+import com.example.westcon.data.UserProfile
+
 @Composable
 fun SignUpStepTwoScreen(onNextClick: () -> Unit) {
+    var username by remember { mutableStateOf("") }
+    var college by remember { mutableStateOf("CICT") }
+    var program by remember { mutableStateOf("BSCS") }
+    var year by remember { mutableStateOf("1") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.bg_login),
@@ -41,9 +54,15 @@ fun SignUpStepTwoScreen(onNextClick: () -> Unit) {
                 fontFamily = MomotrustFontFamily
             )
 
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
+            }
+
             Spacer(modifier = Modifier.height(30.dp))
 
             SignUpTextField(
+                value = username,
+                onValueChange = { username = it },
                 label = "Username",
                 icon = R.drawable.person // Changed to person icon to match "Username"
             )
@@ -57,33 +76,68 @@ fun SignUpStepTwoScreen(onNextClick: () -> Unit) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     DropdownLabel("College")
-                    CustomDropdown(listOf("CICT", "CON", "COE", "CAS"))
+                    CustomDropdown(listOf("CICT", "CON", "COE", "CAS"), college) { college = it }
                 }
                 Column(modifier = Modifier.weight(1.2f)) {
                     DropdownLabel("Program")
-                    CustomDropdown(listOf("BSIT", "BSCS", "BSIS"))
+                    CustomDropdown(listOf("BSIT", "BSCS", "BSIS"), program) { program = it }
                 }
                 Column(modifier = Modifier.weight(0.8f)) {
                     DropdownLabel("Year Lvl.")
-                    CustomDropdown(listOf("1", "2", "3", "4"))
+                    CustomDropdown(listOf("1", "2", "3", "4"), year) { year = it }
                 }
             }
 
             Spacer(modifier = Modifier.height(40.dp))
 
             Button(
-                onClick = onNextClick,
+                onClick = {
+                    if (username.isEmpty()) {
+                        errorMessage = "Please enter a username"
+                        return@Button
+                    }
+                    val user = FirebaseManager.getCurrentUser()
+                    if (user == null) {
+                        errorMessage = "User session not found"
+                        return@Button
+                    }
+
+                    isLoading = true
+                    errorMessage = null
+                    scope.launch {
+                        val profile = UserProfile(
+                            uid = user.uid,
+                            name = username,
+                            email = user.email ?: "",
+                            department = college,
+                            course = program,
+                            year = year
+                        )
+                        val result = FirebaseManager.saveUserProfile(profile)
+                        isLoading = false
+                        if (result.isSuccess) {
+                            onNextClick()
+                        } else {
+                            errorMessage = result.exceptionOrNull()?.message ?: "Failed to save profile"
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(60.dp),
+                enabled = !isLoading,
                 shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF001229))
             ) {
-                Text(
-                    "Next",
-                    color = WestconYellow,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = MomotrustFontFamily
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(color = WestconYellow, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(
+                        "Next",
+                        color = WestconYellow,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = MomotrustFontFamily
+                    )
+                }
             }
         }
         FooterSection(Modifier.align(Alignment.BottomCenter))
@@ -104,9 +158,8 @@ fun DropdownLabel(text: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomDropdown(options: List<String>) { // Fixed: was 'listOf<String>' (syntax error)
+fun CustomDropdown(options: List<String>, selectedOption: String, onOptionSelected: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedOption by remember { mutableStateOf(options[0]) }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -116,8 +169,6 @@ fun CustomDropdown(options: List<String>) { // Fixed: was 'listOf<String>' (synt
             value = selectedOption,
             onValueChange = {},
             readOnly = true,
-            // Fixed: use Modifier.menuAnchor(MenuAnchorType.PrimaryEditable, true) or simply menuAnchor()
-            // depending on your Material3 version
             modifier = Modifier.menuAnchor(),
             shape = RoundedCornerShape(15.dp),
             trailingIcon = {
@@ -145,7 +196,7 @@ fun CustomDropdown(options: List<String>) { // Fixed: was 'listOf<String>' (synt
                 DropdownMenuItem(
                     text = { Text(selectionOption) },
                     onClick = {
-                        selectedOption = selectionOption
+                        onOptionSelected(selectionOption)
                         expanded = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding

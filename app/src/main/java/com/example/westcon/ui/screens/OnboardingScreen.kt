@@ -1,4 +1,4 @@
-package com.example.westcon
+package com.example.westcon.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

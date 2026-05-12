@@ -1,215 +1,176 @@
 package com.example.westcon.ui.screens
 
-import androidx.compose.foundation.background
+import com.example.westcon.R
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.*
+// CRITICAL: You were missing these for 'remember' and 'mutableStateOf'
+import androidx.compose.runtime.* import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.westcon.ui.theme.*
 
-data class OnboardingPage(
-    val title: String,
-    val description: String
+// Note: Ensure these are accessible to your signup.kt file!
+val MomotrustFontFamily = FontFamily(
+    Font(R.font.momotrustsans_regular, FontWeight.Normal),
+    Font(R.font.momotrustdisplay_regular, FontWeight.Bold)
 )
 
-val onboardingPages = listOf(
-    OnboardingPage(
-        title = "Connect and interact with fellow Taga-Wests.",
-        description = "Build meaningful connections with students"
-    ),
-    OnboardingPage(
-        title = "Share skills and expand your network with Taga-Wests.",
-        description = "Grow together through shared experiences"
-    ),
-    OnboardingPage(
-        title = "Join the community and make WSU the best.",
-        description = "Be part of something bigger"
-    )
-)
+val WestconDarkBlue = Color(0xFF001D3D)
+val WestconYellow = Color(0xFFFFD700)
 
 @Composable
-fun LandingScreen(
-    onSignUpClick: () -> Unit = {},
-    onLoginClick: () -> Unit = {},
-    onContinueClick: () -> Unit = {}
-) {
-    val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = White)
-    ) {
-        Column(
+fun WestconLoginScreen(onSignUpClick: () -> Unit, onLoginClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.bg_login),
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Pager
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) { page ->
-                OnboardingPageContent(onboardingPages[page])
-            }
-            
-            // Page Indicators
-            PageIndicators(
-                pageCount = onboardingPages.size,
-                currentPage = pagerState.currentPage,
-                modifier = Modifier.padding(vertical = 24.dp)
-            )
-            
-            // Buttons - Only show on last page
-            if (pagerState.currentPage == onboardingPages.size - 1) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Get Started Button
-                    Button(
-                        onClick = onContinueClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = WestConGold
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "Get Started",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = DarkGray
-                        )
-                    }
-                    
-                    // Footer Links
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Privacy Policy",
-                            fontSize = 11.sp,
-                            color = TextGray,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        Text(
-                            text = "•",
-                            fontSize = 11.sp,
-                            color = TextGray,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                        Text(
-                            text = "Terms of Service",
-                            fontSize = 11.sp,
-                            color = TextGray,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                    }
-                }
-            } else {
-                // Empty spacer to maintain bottom padding on other pages
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-    }
-}
+            contentScale = ContentScale.Crop
+        )
 
-@Composable
-private fun OnboardingPageContent(page: OnboardingPage) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Image Placeholder Box - Large and consistent across all pages
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .background(
-                    color = LightGray,
-                    shape = RoundedCornerShape(16.dp)
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .padding(top = 150.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.icon),
+                    contentDescription = null,
+                    tint = WestconYellow,
+                    modifier = Modifier.size(110.dp)
                 )
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Title - Centered
-        Text(
-            text = page.title,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = DarkGray,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-        
-        // Description - Centered
-        Text(
-            text = page.description,
-            fontSize = 14.sp,
-            color = TextGray,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("WESTCON", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                    Text("THE OFFICIAL STUDENT SKILL\nMARKETPLACE", color = Color.White, fontSize = 10.sp, lineHeight = 12.sp, fontFamily = MomotrustFontFamily)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(30.dp))
+
+            Text("Let’s get you\nsorted", color = Color.White, fontSize = 36.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("WANT TO CONNECT WITH FELLOW\nTAGA-WESTS?", color = Color.White.copy(alpha = 0.9f), fontSize = 16.sp, fontFamily = MomotrustFontFamily)
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Button(
+                onClick = onSignUpClick,
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(painterResource(R.drawable.email), null, tint = WestconYellow, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Sign up with Email", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onLoginClick, // 3. Set this to the parameter
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(R.drawable.email),
+                        contentDescription = null,
+                        tint = WestconDarkBlue,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "Login with Email",
+                        color = WestconDarkBlue,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = MomotrustFontFamily
+                    )
+                }
+            }
+        }
+
+        FooterSection(Modifier.align(Alignment.BottomCenter))
     }
 }
 
 @Composable
-private fun PageIndicators(
-    pageCount: Int,
-    currentPage: Int,
-    modifier: Modifier = Modifier
+fun SignUpTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: Int,
+    isPassword: Boolean = false,
+    showEyeIcon: Boolean = false
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(label, color = Color.Gray) },
+        leadingIcon = {
+            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp), tint = WestconDarkBlue)
+        },
+        trailingIcon = {
+            if (isPassword && showEyeIcon) {
+                val image = if (passwordVisible)
+                    painterResource(id = R.drawable.secret)
+                else
+                    painterResource(id = R.drawable.secret_on)
+
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(painter = image, contentDescription = null, modifier = Modifier.size(24.dp), tint = WestconDarkBlue)
+                }
+            }
+        },
+        visualTransformation = if (isPassword && !passwordVisible)
+            PasswordVisualTransformation()
+        else
+            VisualTransformation.None,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(50),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = Color.White,
+            focusedContainerColor = Color.White,
+            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = WestconYellow,
+            focusedTextColor = Color.Black,
+            unfocusedTextColor = Color.Black
+        ),
+        singleLine = true
+    )
+}
+
+@Composable
+fun FooterSection(modifier: Modifier) {
+    Column(
+        modifier = modifier.padding(bottom = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        repeat(pageCount) { index ->
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(
-                        color = if (index == currentPage) DarkGray else DarkGray.copy(alpha = 0.3f),
-                        shape = CircleShape
-                    )
-                    .padding(4.dp)
-            )
+        Text("ACADEMIC INTEGRITY • PEER COLLABORATION • WVSU EXCELLENCE", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontFamily = MomotrustFontFamily)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row {
+            Text("Privacy Policy", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp, fontFamily = MomotrustFontFamily)
+            Text("  •  ", color = Color.White.copy(alpha = 0.8f))
+            Text("Terms of Service", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp, fontFamily = MomotrustFontFamily)
         }
     }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun LandingScreenPreview() {
-    LandingScreen()
 }
