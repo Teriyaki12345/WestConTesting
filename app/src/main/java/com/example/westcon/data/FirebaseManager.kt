@@ -10,12 +10,12 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 object FirebaseManager {
-    private val auth = FirebaseAuth.getInstance()
-    private val db = FirebaseFirestore.getInstance()
-    private val usersCollection = db.collection(FirestoreCollections.USERS)
-    private val skillsCollection = db.collection(FirestoreCollections.SKILLS)
-    private val freedomWallCollection = db.collection(FirestoreCollections.FREEDOM_WALL)
-    private val messagesCollection = db.collection(FirestoreCollections.MESSAGES)
+    private val auth by lazy { FirebaseAuth.getInstance() }
+    private val db by lazy { FirebaseFirestore.getInstance() }
+    private val usersCollection by lazy { db.collection(FirestoreCollections.USERS) }
+    private val skillsCollection by lazy { db.collection(FirestoreCollections.SKILLS) }
+    private val freedomWallCollection by lazy { db.collection(FirestoreCollections.FREEDOM_WALL) }
+    private val messagesCollection by lazy { db.collection(FirestoreCollections.MESSAGES) }
 
     // --- Authentication ---
     fun getCurrentUser() = auth.currentUser
