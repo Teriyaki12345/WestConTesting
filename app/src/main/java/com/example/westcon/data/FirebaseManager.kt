@@ -1,5 +1,6 @@
 package com.example.westcon.data
 
+import com.example.westcon.data.FirestoreCollections
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -11,6 +12,10 @@ import kotlinx.coroutines.tasks.await
 object FirebaseManager {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
+    private val usersCollection = db.collection(FirestoreCollections.USERS)
+    private val skillsCollection = db.collection(FirestoreCollections.SKILLS)
+    private val freedomWallCollection = db.collection(FirestoreCollections.FREEDOM_WALL)
+    private val messagesCollection = db.collection(FirestoreCollections.MESSAGES)
 
     // --- Authentication ---
     fun getCurrentUser() = auth.currentUser
@@ -40,7 +45,7 @@ object FirebaseManager {
     // --- User Profile ---
     suspend fun saveUserProfile(profile: UserProfile): Result<Unit> {
         return try {
-            db.collection("users").document(profile.uid).set(profile).await()
+            usersCollection.document(profile.uid).set(profile).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -49,7 +54,7 @@ object FirebaseManager {
 
     suspend fun getUserProfile(uid: String): UserProfile? {
         return try {
-            db.collection("users").document(uid).get().await().toObject(UserProfile::class.java)
+            usersCollection.document(uid).get().await().toObject(UserProfile::class.java)
         } catch (e: Exception) {
             null
         }
@@ -58,7 +63,7 @@ object FirebaseManager {
     // --- Skill Marketplace ---
     suspend fun postSkill(post: SkillPost): Result<Unit> {
         return try {
-            val ref = db.collection("skills").document()
+            val ref = skillsCollection.document()
             ref.set(post.copy(id = ref.id)).await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -67,7 +72,7 @@ object FirebaseManager {
     }
 
     fun getSkillPosts(): Flow<List<SkillPost>> = callbackFlow {
-        val subscription = db.collection("skills")
+        val subscription = skillsCollection
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
@@ -81,7 +86,7 @@ object FirebaseManager {
     // --- Freedom Wall ---
     suspend fun postToFreedomWall(post: FreedomPost): Result<Unit> {
         return try {
-            val ref = db.collection("freedom_wall").document()
+            val ref = freedomWallCollection.document()
             ref.set(post.copy(id = ref.id)).await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -90,7 +95,7 @@ object FirebaseManager {
     }
 
     fun getFreedomPosts(): Flow<List<FreedomPost>> = callbackFlow {
-        val subscription = db.collection("freedom_wall")
+        val subscription = freedomWallCollection
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
@@ -104,7 +109,7 @@ object FirebaseManager {
     // --- Messaging ---
     suspend fun sendMessage(msg: Message): Result<Unit> {
         return try {
-            val ref = db.collection("messages").document()
+            val ref = messagesCollection.document()
             ref.set(msg.copy(id = ref.id)).await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -113,9 +118,9 @@ object FirebaseManager {
     }
 
     fun getChatSummaries(): Flow<List<ChatSummary>> = callbackFlow {
-        // For a prototype, we'll return a static list or a simple query.
-        // In a real app, this would be a complex query of 'chats' where the user is a participant.
-        trySend(emptyList()) 
+        // For now this returns a placeholder list.
+        // When you add a chat summary collection, use Firestore here.
+        trySend(emptyList())
         awaitClose { }
     }
 }

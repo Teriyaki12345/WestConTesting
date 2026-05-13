@@ -2,6 +2,9 @@ package com.example.westcon.data
 
 import com.google.firebase.Timestamp
 
+// Firestore collection: users
+// Document ID: user's uid
+// This stores the authenticated user's profile and preferences.
 data class UserProfile(
     val uid: String = "",
     val name: String = "",
