@@ -6,4 +6,5 @@ object FirestoreCollections {
     const val FREEDOM_WALL = "freedom_wall"
     const val MESSAGES = "messages"
     const val CHAT_SUMMARIES = "chat_summaries"
+    const val NOTIFICATIONS = "notifications"
 }

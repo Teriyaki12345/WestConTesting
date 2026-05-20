@@ -14,12 +14,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.ui.theme.*
 import kotlinx.coroutines.launch
+import com.example.westcon.data.FirebaseManager
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 
 @Composable
-fun RegisterScreen(onJoinClick: () -> Unit, onBackClick: () -> Unit) {
+fun RegisterScreen(onJoinClick: (String, String) -> Unit, onBackClick: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -98,26 +100,25 @@ fun RegisterScreen(onJoinClick: () -> Unit, onBackClick: () -> Unit) {
 
             Button(
                 onClick = {
+                    if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+                        errorMessage = "Please fill all fields"
+                        return@Button
+                    }
+                    if (!email.endsWith("@wvsu.edu.ph")) {
+                        errorMessage = "Please use your WVSU email (@wvsu.edu.ph)"
+                        return@Button
+                    }
                     if (password != confirmPassword) {
                         errorMessage = "Passwords do not match"
                         return@Button
                     }
-                    if (email.isEmpty() || password.isEmpty()) {
-                        errorMessage = "Please fill all fields"
+                    if (password.length < 6) {
+                        errorMessage = "Password should be at least 6 characters"
                         return@Button
                     }
                     
-                    isLoading = true
-                    errorMessage = null
-                    scope.launch {
-                        val result = com.example.westcon.data.FirebaseManager.signUp(email, password)
-                        isLoading = false
-                        if (result.isSuccess) {
-                            onJoinClick()
-                        } else {
-                            errorMessage = result.exceptionOrNull()?.message ?: "Signup failed"
-                        }
-                    }
+                    // Proceed to step two without creating the account yet
+                    onJoinClick(email, password)
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 enabled = !isLoading,
@@ -141,5 +142,3 @@ fun RegisterScreen(onJoinClick: () -> Unit, onBackClick: () -> Unit) {
         FooterSection(Modifier.align(Alignment.BottomCenter))
     }
 }
-
-

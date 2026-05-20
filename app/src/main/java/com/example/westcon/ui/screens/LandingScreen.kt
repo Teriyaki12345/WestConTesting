@@ -18,15 +18,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.ui.theme.*
 
 // Note: Ensure these are accessible to your signup.kt file!
-val MomotrustFontFamily = FontFamily(
-    Font(R.font.momotrustsans_regular, FontWeight.Normal),
-    Font(R.font.momotrustdisplay_regular, FontWeight.Bold)
-)
-
-val WestconDarkBlue = Color(0xFF001D3D)
-val WestconYellow = Color(0xFFFFD700)
 
 @Composable
 fun WestconLoginScreen(onSignUpClick: () -> Unit, onLoginClick: () -> Unit) {

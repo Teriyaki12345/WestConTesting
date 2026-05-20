@@ -7,7 +7,15 @@ class DashboardFragment : BaseFragment() {
     @Composable
     override fun ScreenContent() {
         DashboardScreen(
-            onNotificationClick = { navigateTo(NotificationFragment()) }
+            onNotificationClick = { navigateTo(NotificationFragment()) },
+            onSearchClick = { navigateTo(SearchFragment()) },
+            onLogoutClick = {
+                com.example.westcon.data.FirebaseManager.logout()
+                navigateTo(LandingFragment())
+            },
+            onMessageClick = { chatId, userName ->
+                navigateTo(ChatDetailFragment.newInstance(chatId, userName))
+            }
         )
     }
 }

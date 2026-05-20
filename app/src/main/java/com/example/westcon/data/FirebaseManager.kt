@@ -16,6 +16,8 @@ object FirebaseManager {
     private val skillsCollection by lazy { db.collection(FirestoreCollections.SKILLS) }
     private val freedomWallCollection by lazy { db.collection(FirestoreCollections.FREEDOM_WALL) }
     private val messagesCollection by lazy { db.collection(FirestoreCollections.MESSAGES) }
+    private val chatSummariesCollection by lazy { db.collection(FirestoreCollections.CHAT_SUMMARIES) }
+    private val notificationsCollection by lazy { db.collection(FirestoreCollections.NOTIFICATIONS) }
 
     // --- Authentication ---
     fun getCurrentUser() = auth.currentUser
@@ -43,6 +45,15 @@ object FirebaseManager {
     fun logout() = auth.signOut()
 
     // --- User Profile ---
+    suspend fun checkUsernameExists(username: String): Boolean {
+        return try {
+            val query = usersCollection.whereEqualTo("name", username).get().await()
+            !query.isEmpty
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     suspend fun saveUserProfile(profile: UserProfile): Result<Unit> {
         return try {
             usersCollection.document(profile.uid).set(profile).await()
@@ -71,6 +82,15 @@ object FirebaseManager {
         }
     }
 
+    suspend fun deleteSkillPost(postId: String): Result<Unit> {
+        return try {
+            skillsCollection.document(postId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun getSkillPosts(): Flow<List<SkillPost>> = callbackFlow {
         val subscription = skillsCollection
             .orderBy("timestamp", Query.Direction.DESCENDING)
@@ -87,7 +107,17 @@ object FirebaseManager {
     suspend fun postToFreedomWall(post: FreedomPost): Result<Unit> {
         return try {
             val ref = freedomWallCollection.document()
-            ref.set(post.copy(id = ref.id)).await()
+            val authorUid = auth.currentUser?.uid ?: ""
+            ref.set(post.copy(id = ref.id, authorUid = authorUid)).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteFreedomPost(postId: String): Result<Unit> {
+        return try {
+            freedomWallCollection.document(postId).delete().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -106,21 +136,176 @@ object FirebaseManager {
         awaitClose { subscription.remove() }
     }
 
-    // --- Messaging ---
-    suspend fun sendMessage(msg: Message): Result<Unit> {
+    suspend fun toggleLikeFreedomPost(postId: String): Result<Unit> {
         return try {
-            val ref = messagesCollection.document()
-            ref.set(msg.copy(id = ref.id)).await()
+            val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Not logged in"))
+            val docRef = freedomWallCollection.document(postId)
+            val snapshot = docRef.get().await()
+            val post = snapshot.toObject(FreedomPost::class.java) ?: return Result.failure(Exception("Post not found"))
+            
+            val likedBy = post.likedBy.toMutableList()
+            var likes = post.likes
+            
+            if (likedBy.contains(uid)) {
+                likedBy.remove(uid)
+                likes--
+            } else {
+                likedBy.add(uid)
+                likes++
+            }
+            
+            docRef.update("likedBy", likedBy, "likes", likes).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
+    // --- Messaging ---
+    suspend fun sendMessage(msg: Message, chatId: String): Result<Unit> {
+        return try {
+            val ref = messagesCollection.document(chatId).collection("history").document()
+            ref.set(msg.copy(id = ref.id)).await()
+            
+            // Also update chat summaries for both users
+            startChat(msg.senderUid, msg.receiverUid, msg.text)
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun startChat(uid: String, otherUid: String, firstMsg: String) {
+        updateChatSummary(uid, otherUid, firstMsg)
+        updateChatSummary(otherUid, uid, firstMsg)
+    }
+
+    private suspend fun updateChatSummary(uid: String, otherUid: String, lastMsg: String) {
+        val profile = getUserProfile(otherUid)
+        val summary = ChatSummary(
+            otherUserUid = otherUid,
+            otherUserName = profile?.name ?: "User",
+            otherUserIconName = profile?.profileIconName ?: "Person",
+            otherUserDept = profile?.department ?: "WVSU",
+            lastMessage = lastMsg,
+            timestamp = com.google.firebase.Timestamp.now()
+        )
+        chatSummariesCollection.document(uid).collection("chats").document(otherUid).set(summary).await()
+    }
+
+    // --- Notifications ---
+    suspend fun sendNotification(notification: Notification): Result<Unit> {
+        return try {
+            val ref = notificationsCollection.document()
+            ref.set(notification.copy(id = ref.id)).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteNotification(id: String): Result<Unit> {
+        return try {
+            notificationsCollection.document(id).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markNotificationAsRead(id: String): Result<Unit> {
+        return try {
+            notificationsCollection.document(id).update("isRead", true).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rateUserSkill(targetUid: String, skillName: String, rating: Double): Result<Unit> {
+        return try {
+            val profile = getUserProfile(targetUid) ?: return Result.failure(Exception("User not found"))
+            val skills = profile.skillsToTeach.toMutableList()
+            val skillIndex = skills.indexOfFirst { it.skillName.equals(skillName, ignoreCase = true) }
+            
+            if (skillIndex != -1) {
+                val skill = skills[skillIndex]
+                val newTotal = skill.totalRatings + 1
+                val newAvg = ((skill.averageRating * skill.totalRatings) + rating) / newTotal
+                
+                // Automatic Level Progression (Simple Logic: every 3 ratings = +1 level)
+                val newLevel = (newTotal / 3 + 1).coerceAtMost(5)
+                
+                skills[skillIndex] = skill.copy(
+                    averageRating = newAvg,
+                    totalRatings = newTotal,
+                    level = newLevel
+                )
+                
+                // Update overall user rating as well
+                val overallAvg = skills.map { it.averageRating }.average()
+                saveUserProfile(profile.copy(skillsToTeach = skills, rating = overallAvg))
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun getMessages(chatId: String): Flow<List<Message>> = callbackFlow {
+        val subscription = messagesCollection
+            .document(chatId)
+            .collection("history")
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    trySend(snapshot.toObjects(Message::class.java))
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
     fun getChatSummaries(): Flow<List<ChatSummary>> = callbackFlow {
-        // For now this returns a placeholder list.
-        // When you add a chat summary collection, use Firestore here.
-        trySend(emptyList())
-        awaitClose { }
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val subscription = chatSummariesCollection
+            .document(uid)
+            .collection("chats")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    trySend(snapshot.toObjects(ChatSummary::class.java))
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
+    // --- Notifications ---
+    fun getNotifications(): Flow<List<Notification>> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val subscription = notificationsCollection
+            .whereEqualTo("receiverUid", uid)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    trySend(snapshot.toObjects(Notification::class.java))
+                }
+            }
+        awaitClose { subscription.remove() }
     }
 }

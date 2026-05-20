@@ -11,10 +11,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.ui.theme.*
 import kotlinx.coroutines.launch
 
 data class OnboardingPage(
@@ -70,7 +72,12 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                         .background(Color(0xFFE9ECEF), RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    // You can add an Icon or Image here later
+                    Icon(
+                        painter = painterResource(id = com.example.westcon.R.drawable.icon),
+                        contentDescription = null,
+                        tint = WestconYellow,
+                        modifier = Modifier.size(160.dp)
+                    )
                 }
                 
                 Spacer(modifier = Modifier.height(64.dp))

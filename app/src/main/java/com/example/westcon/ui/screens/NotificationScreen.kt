@@ -1,192 +1,109 @@
 package com.example.westcon.ui.screens
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.ui.theme.*
+import com.example.westcon.data.FirebaseManager
+import com.example.westcon.data.Notification
+import com.example.westcon.ui.UIUtils
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(onBackClick: () -> Unit) {
+    val notifications by FirebaseManager.getNotifications().collectAsState(initial = emptyList())
+    var selectedFilter by remember { mutableStateOf("All") }
+    val scope = rememberCoroutineScope()
+
+    val filteredNotifications = remember(notifications, selectedFilter) {
+        when (selectedFilter) {
+            "Requests" -> notifications.filter { it.type == "SKILL_EXCHANGE" }
+            "Unread" -> notifications.filter { !it.isRead }
+            else -> notifications
+        }
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Notifications", color = WestconDarkBlue, fontSize = 18.sp, fontFamily = MomotrustFontFamily) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = WestconDarkBlue)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
+            Surface(
+                color = White,
+                shadowElevation = 4.dp
+            ) {
+                CenterAlignedTopAppBar(
+                    title = { 
+                        Text(
+                            "Notifications", 
+                            color = WestconDarkBlue, 
+                            fontSize = 20.sp, 
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = MomotrustFontFamily 
+                        ) 
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = WestconDarkBlue)
+                        }
+                    },
+                    actions = {
+                        if (notifications.any { !it.isRead }) {
+                            TextButton(onClick = { /* Mark all as read */ }) {
+                                Text("Mark all as read", color = WestconDarkBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = White)
+                )
+            }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(Color(0xFFF8FAFC))
                 .padding(paddingValues)
         ) {
-            Divider(color = Color(0xFFF1F3F5), thickness = 1.dp)
-            NotificationFilters()
+            NotificationFilters(selectedFilter) { selectedFilter = it }
             
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    NotificationCard(
-                        title = "Skill Exchange",
-                        timeAgo = "2m ago",
-                        icon = Icons.Default.Person, // Fallback for avatar
-                        iconBgColor = Color.LightGray,
-                        iconContentColor = Color.Gray,
-                        isAvatar = true
-                    ) {
-                        Text(
-                            buildAnnotatedString {
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("Juan Dela Cruz ")
-                                }
-                                append("wants to exchange ")
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("'React Basics' ")
-                                }
-                                append("for your ")
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("'UI/UX Logic'")
-                                }
-                                append(".")
-                            },
-                            fontSize = 13.sp,
-                            color = Color.DarkGray
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = { /* TODO */ },
-                                modifier = Modifier.weight(1f).height(40.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Accept", color = Color.White)
-                            }
-                            OutlinedButton(
-                                onClick = { /* TODO */ },
-                                modifier = Modifier.weight(1f).height(40.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Decline", color = Color.DarkGray)
-                            }
-                        }
+            if (filteredNotifications.isEmpty()) {
+                EmptyNotifications(selectedFilter)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredNotifications, key = { it.id }) { notification ->
+                        NotificationItem(notification)
                     }
-                }
-                
-                item {
-                    NotificationCard(
-                        title = "Achievement",
-                        timeAgo = "1h ago",
-                        icon = Icons.Default.Star,
-                        iconBgColor = WestconYellow,
-                        iconContentColor = WestconDarkBlue
-                    ) {
-                        Text(
-                            buildAnnotatedString {
-                                append("Badge Earned! You are now a ")
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = WestconDarkBlue)) {
-                                    append("'SQL Master'")
-                                }
-                                append(".\nKeep up the great work, Taga-West!")
-                            },
-                            fontSize = 13.sp,
-                            color = Color.DarkGray
-                        )
-                    }
-                }
-                
-                item {
-                    NotificationCard(
-                        title = "Message",
-                        timeAgo = "Yesterday",
-                        icon = Icons.Default.Person, // Fallback for avatar
-                        iconBgColor = Color.LightGray,
-                        iconContentColor = Color.Gray,
-                        isAvatar = true,
-                        showArrow = true
-                    ) {
-                        Text(
-                            buildAnnotatedString {
-                                append("New message from ")
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("Maria Clara")
-                                }
-                                append(".")
-                            },
-                            fontSize = 13.sp,
-                            color = Color.DarkGray
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "\"Hi! I saw your post about 'UI/UX Logic'...\"",
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                        )
-                    }
-                }
-                
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Divider(modifier = Modifier.weight(1f), color = Color(0xFFE9ECEF))
-                        Text(
-                            "YESTERDAY",
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            color = Color.Gray,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Divider(modifier = Modifier.weight(1f), color = Color(0xFFE9ECEF))
-                    }
-                }
-                
-                item {
-                    NotificationCard(
-                        title = "Weekly Digest",
-                        timeAgo = "1d ago",
-                        icon = Icons.Default.AccessTime,
-                        iconBgColor = Color(0xFFE9ECEF),
-                        iconContentColor = Color.Gray,
-                        containerColor = Color(0xFFF8F9FA) // Grayed out background
-                    ) {
-                        Text(
-                            "You helped 3 students last week! View your impact report.",
-                            fontSize = 13.sp,
-                            color = Color.Gray
-                        )
-                    }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
@@ -194,72 +111,222 @@ fun NotificationScreen(onBackClick: () -> Unit) {
 }
 
 @Composable
-fun NotificationFilters() {
-    var selectedFilter by remember { mutableStateOf("All") }
-    
-    Row(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf("All", "Requests").forEach { filter ->
-            FilterChip(
-                selected = selectedFilter == filter,
-                onClick = { selectedFilter = filter },
-                label = { Text(filter) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = WestconDarkBlue,
-                    selectedLabelColor = Color.White,
-                    containerColor = Color.White,
-                    labelColor = Color.DarkGray
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = selectedFilter == filter,
-                    borderColor = Color.LightGray,
-                    selectedBorderColor = WestconDarkBlue
-                ),
-                shape = RoundedCornerShape(20.dp)
+fun EmptyNotifications(filter: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 40.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF1F5F9)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    when(filter) {
+                        "Requests" -> Icons.Default.SwapHoriz
+                        "Unread" -> Icons.Outlined.CheckCircle
+                        else -> Icons.Outlined.NotificationsActive
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(60.dp),
+                    tint = Color.LightGray
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                when(filter) {
+                    "Requests" -> "No Exchange Requests"
+                    "Unread" -> "You're All Caught Up!"
+                    else -> "No Notifications"
+                },
+                color = WestconDarkBlue,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = MomotrustFontFamily
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                when(filter) {
+                    "Requests" -> "You haven't received any skill exchange requests yet. Try sharing more of your skills to get noticed!"
+                    "Unread" -> "You've read all your notifications. Great job staying on top of things!"
+                    else -> "When you get skill requests, achievement alerts, or messages, they'll show up here."
+                },
+                color = Color.Gray,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
             )
         }
     }
 }
 
 @Composable
-fun NotificationCard(
-    title: String,
-    timeAgo: String,
-    icon: ImageVector,
-    iconBgColor: Color,
-    iconContentColor: Color,
-    isAvatar: Boolean = false,
-    showArrow: Boolean = false,
-    containerColor: Color = Color.White,
-    content: @Composable () -> Unit
-) {
+fun NotificationItem(notification: Notification) {
+    val timeAgo = UIUtils.formatTimestamp(notification.timestamp)
+    val scope = rememberCoroutineScope()
+    var showAcceptConfirm by remember { mutableStateOf(false) }
+    var showDeclineConfirm by remember { mutableStateOf(false) }
+    
+    if (showAcceptConfirm) {
+        AlertDialog(
+            onDismissRequest = { showAcceptConfirm = false },
+            title = { Text("Accept Exchange?", fontWeight = FontWeight.Bold, color = WestconDarkBlue) },
+            text = { 
+                Text("Are you sure you want to accept this exchange? A new chat will be started with ${notification.senderName}.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val currentUid = FirebaseManager.getCurrentUser()?.uid ?: ""
+                            val senderUid = notification.senderUid ?: ""
+                            if (currentUid.isNotEmpty() && senderUid.isNotEmpty()) {
+                                // 1. Start Chat
+                                FirebaseManager.startChat(
+                                    currentUid, 
+                                    senderUid, 
+                                    "I've accepted your exchange request for ${notification.skillWanted}!"
+                                )
+
+                                // 2. Update Requester's Profile (Sender) - They learn the 'skillWanted' (from responder's post)
+                                val senderProfile = FirebaseManager.getUserProfile(senderUid)
+                                if (senderProfile != null && notification.skillWanted != null) {
+                                    val isAlreadyLearning = senderProfile.skillsLearning.keys.any { it.equals(notification.skillWanted, ignoreCase = true) }
+                                    if (!isAlreadyLearning) {
+                                        val updatedLearning = senderProfile.skillsLearning.toMutableMap().apply {
+                                            put(notification.skillWanted, 0)
+                                        }
+                                        FirebaseManager.saveUserProfile(senderProfile.copy(skillsLearning = updatedLearning))
+                                    }
+                                }
+
+                                // 3. Update Responder's Profile (Current User) - They learn the 'skillOffered' (by requester)
+                                val responderProfile = FirebaseManager.getUserProfile(currentUid)
+                                if (responderProfile != null && notification.skillOffered != null) {
+                                    val isAlreadyLearning = responderProfile.skillsLearning.keys.any { it.equals(notification.skillOffered, ignoreCase = true) }
+                                    if (!isAlreadyLearning) {
+                                        val updatedLearning = responderProfile.skillsLearning.toMutableMap().apply {
+                                            put(notification.skillOffered, 0)
+                                        }
+                                        FirebaseManager.saveUserProfile(responderProfile.copy(skillsLearning = updatedLearning))
+                                    }
+                                }
+                                
+                                // 4. Delete Notification
+                                FirebaseManager.deleteNotification(notification.id)
+                            }
+                            showAcceptConfirm = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)
+                ) {
+                    Text("Accept")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAcceptConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showDeclineConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeclineConfirm = false },
+            title = { Text("Decline Request?", fontWeight = FontWeight.Bold, color = Color.Red) },
+            text = { Text("Are you sure you want to decline this exchange request? This will remove the notification.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            FirebaseManager.deleteNotification(notification.id)
+                            showDeclineConfirm = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Decline")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeclineConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F3F5)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(if (!notification.isRead) 4.dp else 0.dp, RoundedCornerShape(16.dp))
+            .clickable { 
+                if (!notification.isRead) {
+                    scope.launch { FirebaseManager.markNotificationAsRead(notification.id) }
+                }
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = if (notification.isRead) White else Color(0xFFEFF6FF)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        border = if (notification.isRead) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9)) else null
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Icon or Avatar Placeholder
+            // Unread Indicator
+            if (!notification.isRead) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(WestconDarkBlue)
+                        .offset(x = (-8).dp, y = 4.dp)
+                )
+            }
+
+            // Notification Icon/Avatar
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(iconBgColor)
-                    .then(if (isAvatar) Modifier.border(2.dp, WestconYellow, CircleShape) else Modifier),
+                    .background(
+                        when (notification.type) {
+                            "SKILL_EXCHANGE" -> Color(0xFFF1F5F9)
+                            "ACHIEVEMENT" -> WestconYellow.copy(alpha = 0.1f)
+                            "MESSAGE" -> Color(0xFFF0FDF4)
+                            else -> Color(0xFFF1F5F9)
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = iconContentColor, modifier = Modifier.size(if(isAvatar) 24.dp else 20.dp))
+                when (notification.type) {
+                    "SKILL_EXCHANGE" -> {
+                        Icon(
+                            UIUtils.getProfileIcon(notification.senderIconName), 
+                            contentDescription = null, 
+                            tint = WestconDarkBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    "ACHIEVEMENT" -> {
+                        Icon(Icons.Default.Stars, contentDescription = null, tint = WestconYellow, modifier = Modifier.size(26.dp))
+                    }
+                    "MESSAGE" -> {
+                        Icon(Icons.Default.ChatBubble, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(22.dp))
+                    }
+                    else -> {
+                        Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(22.dp))
+                    }
+                }
             }
             
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             
             Column(modifier = Modifier.weight(1f)) {
                 Row(
@@ -268,23 +335,135 @@ fun NotificationCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        title,
-                        color = if (title == "Achievement") Color(0xFF856404) else WestconDarkBlue,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = MomotrustFontFamily
+                        when (notification.type) {
+                            "SKILL_EXCHANGE" -> "Exchange Request"
+                            "ACHIEVEMENT" -> "New Achievement"
+                            "MESSAGE" -> "New Message"
+                            else -> notification.title
+                        },
+                        color = WestconDarkBlue,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
                     )
                     Text(timeAgo, color = Color.Gray, fontSize = 10.sp)
                 }
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                content()
+                NotificationContent(notification)
+                
+                if (notification.type == "SKILL_EXCHANGE") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = { showAcceptConfirm = true },
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Accept", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        OutlinedButton(
+                            onClick = { showDeclineConfirm = true },
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFE2E8F0)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Decline", color = Color.Gray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
-            
-            if (showArrow) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = WestconDarkBlue, modifier = Modifier.align(Alignment.CenterVertically))
+        }
+    }
+}
+
+@Composable
+fun NotificationContent(notification: Notification) {
+    when (notification.type) {
+        "SKILL_EXCHANGE" -> {
+            Text(
+                buildAnnotatedString {
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = WestconDarkBlue)) {
+                        append("${notification.senderName ?: "Someone"} ")
+                    }
+                    append("wants to exchange ")
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = WestconDarkBlue)) {
+                        append("'${notification.skillOffered ?: "a skill"}' ")
+                    }
+                    append("for your ")
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = WestconDarkBlue)) {
+                        append("'${notification.skillWanted ?: "a skill"}'")
+                    }
+                },
+                fontSize = 14.sp,
+                color = Color.DarkGray,
+                lineHeight = 20.sp
+            )
+        }
+        "MESSAGE" -> {
+            Column {
+                Text(
+                    buildAnnotatedString {
+                        append("New message from ")
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = WestconDarkBlue)) {
+                            append(notification.senderName ?: "User")
+                        }
+                    },
+                    fontSize = 14.sp,
+                    color = Color.DarkGray
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = Color(0xFFF1F5F9),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        "\"${notification.content}\"",
+                        fontSize = 13.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+        }
+        else -> {
+            Text(
+                notification.content,
+                fontSize = 14.sp,
+                color = Color.DarkGray,
+                lineHeight = 20.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun NotificationFilters(selectedFilter: String, onFilterSelected: (String) -> Unit) {
+    val filters = listOf("All", "Unread", "Requests")
+    
+    LazyRow(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(filters) { filter ->
+            val isSelected = selectedFilter == filter
+            Surface(
+                onClick = { onFilterSelected(filter) },
+                color = if (isSelected) WestconDarkBlue else White,
+                shape = RoundedCornerShape(12.dp),
+                border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                modifier = Modifier.shadow(if (isSelected) 4.dp else 0.dp, RoundedCornerShape(12.dp))
+            ) {
+                Text(
+                    filter,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) White else Color.Gray
+                )
             }
         }
     }

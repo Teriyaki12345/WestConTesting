@@ -1,7 +1,9 @@
 package com.example.westcon.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,37 +18,86 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.data.FirebaseManager
+import com.example.westcon.ui.theme.*
+import kotlinx.coroutines.launch
 
+import com.example.westcon.ui.UIUtils
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(onNotificationClick: () -> Unit = {}) {
+fun DashboardScreen(
+    onNotificationClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {},
+    onMessageClick: (String, String) -> Unit = { _, _ -> }
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showPostSkillDialog by remember { mutableStateOf(false) }
+    var showPostFreedomDialog by remember { mutableStateOf(false) }
+    var skillToExchange by remember { mutableStateOf<com.example.westcon.data.SkillPost?>(null) }
+    
+    val notifications by FirebaseManager.getNotifications().collectAsState(initial = emptyList())
+    val hasUnread = notifications.any { !it.isRead }
 
     Scaffold(
-        topBar = { DashboardTopBar(onNotificationClick = onNotificationClick) },
+        topBar = { 
+            val title = when(selectedTab) {
+                1 -> "Freedom Wall"
+                2 -> "Messages"
+                3 -> "Profile"
+                else -> "WestCon"
+            }
+            DashboardTopBar(
+                title = title,
+                showLogo = selectedTab == 0,
+                onNotificationClick = onNotificationClick, 
+                onSearchClick = onSearchClick,
+                hasNotifications = hasUnread
+            ) 
+        },
         bottomBar = { DashboardBottomNav(selectedTab) { selectedTab = it } },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* TODO */ },
-                containerColor = WestconDarkBlue,
-                contentColor = Color.White,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Post")
+            if (selectedTab == 0 || selectedTab == 1) {
+                FloatingActionButton(
+                    onClick = { 
+                        if (selectedTab == 0) showPostSkillDialog = true 
+                        else if (selectedTab == 1) showPostFreedomDialog = true
+                    },
+                    containerColor = if (selectedTab == 1) WestconYellow else WestconDarkBlue,
+                    contentColor = if (selectedTab == 1) WestconDarkBlue else Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Post")
+                }
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedTab) {
-                0 -> HomeFeed()
+                0 -> HomeFeed(
+                    onPostClick = { showPostSkillDialog = true },
+                    onExchangeClick = { skillToExchange = it },
+                    onMessageClick = { authorUid, authorName ->
+                        val currentUid = FirebaseManager.getCurrentUser()?.uid ?: ""
+                        if (currentUid != authorUid) {
+                            val chatId = if (currentUid < authorUid) "${currentUid}_${authorUid}" else "${authorUid}_$currentUid"
+                            onMessageClick(chatId, authorName)
+                        }
+                    }
+                )
                 1 -> FreedomWallScreen()
-                2 -> MessageScreen()
-                3 -> ProfileScreen()
+                2 -> MessageScreen(onMessageClick = onMessageClick)
+                3 -> ProfileScreen(onLogoutClick = onLogoutClick)
                 else -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("Screen $selectedTab Coming Soon", fontFamily = MomotrustFontFamily)
@@ -55,123 +106,562 @@ fun DashboardScreen(onNotificationClick: () -> Unit = {}) {
             }
         }
     }
+
+    if (showPostSkillDialog) {
+        PostSkillDialog(onDismiss = { showPostSkillDialog = false })
+    }
+
+    if (showPostFreedomDialog) {
+        PostFreedomDialog(onDismiss = { showPostFreedomDialog = false })
+    }
+
+    if (skillToExchange != null) {
+        ExchangeDialog(
+            targetPost = skillToExchange!!,
+            onDismiss = { skillToExchange = null }
+        )
+    }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HomeFeed() {
-    val posts by com.example.westcon.data.FirebaseManager.getSkillPosts().collectAsState(initial = emptyList())
+fun ExchangeDialog(targetPost: com.example.westcon.data.SkillPost, onDismiss: () -> Unit) {
+    var offeredSkill by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var userProfile by remember { mutableStateOf<com.example.westcon.data.UserProfile?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val currentUser = FirebaseManager.getCurrentUser()
+        if (currentUser != null) {
+            userProfile = FirebaseManager.getUserProfile(currentUser.uid)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Exchange Skills", fontWeight = FontWeight.Bold, color = WestconDarkBlue, fontFamily = MomotrustFontFamily) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "You want to learn '${targetPost.title}' from ${targetPost.authorName}.",
+                    fontSize = 14.sp,
+                    color = Color.DarkGray
+                )
+                
+                if (userProfile != null && userProfile!!.skillsToTeach.isNotEmpty()) {
+                    Text("Choose from your skills:", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        userProfile!!.skillsToTeach.forEach { skill ->
+                            val isSelected = offeredSkill.equals(skill.skillName, ignoreCase = true)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { offeredSkill = skill.skillName },
+                                label = { Text(skill.skillName, fontSize = 12.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = WestconYellow,
+                                    selectedLabelColor = WestconDarkBlue,
+                                    containerColor = Color(0xFFF1F5F9),
+                                    labelColor = Color.Gray
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = Color.Transparent,
+                                    selectedBorderColor = WestconYellow
+                                ),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                OutlinedTextField(
+                    value = offeredSkill,
+                    onValueChange = { offeredSkill = it },
+                    label = { Text("Or type a new skill to teach") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = WestconDarkBlue,
+                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (offeredSkill.isNotBlank()) {
+                        isLoading = true
+                        scope.launch {
+                            val currentUser = FirebaseManager.getCurrentUser()
+                            val profile = userProfile ?: (currentUser?.let { FirebaseManager.getUserProfile(it.uid) })
+                            
+                            // SYNC LOGIC: Check if this skill exists on profile
+                            val existingSkill = profile?.skillsToTeach?.find { it.skillName.equals(offeredSkill.trim(), ignoreCase = true) }
+                            
+                            // If new skill, add to profile automatically
+                            if (existingSkill == null && profile != null) {
+                                val updatedSkills = profile.skillsToTeach.toMutableList().apply {
+                                    add(com.example.westcon.data.SkillMastery(skillName = offeredSkill.trim(), level = 1))
+                                }
+                                FirebaseManager.saveUserProfile(profile.copy(skillsToTeach = updatedSkills))
+                            }
+
+                            val notification = com.example.westcon.data.Notification(
+                                receiverUid = targetPost.authorUid,
+                                type = "SKILL_EXCHANGE",
+                                title = "New Exchange Request",
+                                content = "${profile?.name ?: "Someone"} wants to exchange skills!",
+                                senderUid = currentUser?.uid,
+                                senderName = profile?.name,
+                                senderIconName = profile?.profileIconName ?: "Person",
+                                senderDept = profile?.department,
+                                skillOffered = offeredSkill.trim(),
+                                skillWanted = targetPost.title
+                            )
+                            
+                            FirebaseManager.sendNotification(notification)
+                            isLoading = false
+                            onDismiss()
+                        }
+                    }
+                },
+                enabled = !isLoading && offeredSkill.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                else Text("Send Request", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { 
+                Text("Cancel", color = Color.Gray) 
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PostSkillDialog(onDismiss: () -> Unit) {
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Technology") }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+    val categories = listOf("Technology", "Academics", "Arts", "Language", "Sports", "Others")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.clip(RoundedCornerShape(28.dp)),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        item { PostSkillCard() }
-        item { CategoryChips() }
-        items(posts) { post ->
-            SkillPostCard(post)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight(),
+            color = White,
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Share a Skill",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = WestconDarkBlue,
+                        fontFamily = MomotrustFontFamily
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                    }
+                }
+                
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("What's your skill?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue)
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { if (it.length <= 40) title = it },
+                        placeholder = { Text("e.g. UI/UX Design, Calculus, Guitar") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WestconDarkBlue,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        ),
+                        singleLine = true
+                    )
+                    Text(
+                        "${title.length}/40",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+                
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Category", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(categories) { cat ->
+                            val isSelected = category == cat
+                            val icon = when(cat) {
+                                "Technology" -> Icons.Default.Computer
+                                "Academics" -> Icons.Default.School
+                                "Arts" -> Icons.Default.Palette
+                                "Language" -> Icons.Default.Language
+                                "Sports" -> Icons.Default.SportsBasketball
+                                else -> Icons.Default.AutoAwesome
+                            }
+                            
+                            Surface(
+                                onClick = { category = cat },
+                                color = if (isSelected) WestconDarkBlue else Color(0xFFF1F5F9),
+                                shape = RoundedCornerShape(12.dp),
+                                border = if (isSelected) null else BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (isSelected) White else Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        cat,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) White else Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Description", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue)
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { if (it.length <= 200) description = it },
+                        placeholder = { Text("Tell us a bit about what you can teach and how you can help others...") },
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WestconDarkBlue,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        )
+                    )
+                    Text(
+                        "${description.length}/200",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+                
+                Button(
+                    onClick = {
+                        if (title.isNotBlank() && description.isNotBlank()) {
+                            isLoading = true
+                            scope.launch {
+                                val currentUser = FirebaseManager.getCurrentUser()
+                                val profile = currentUser?.let { FirebaseManager.getUserProfile(it.uid) }
+                                
+                                // SYNC LOGIC: Check if this skill exists on profile
+                                val existingSkill = profile?.skillsToTeach?.find { it.skillName.equals(title, ignoreCase = true) }
+                                val currentMastery = existingSkill?.level ?: 1
+                                
+                                // If new skill, add to profile
+                                if (existingSkill == null && profile != null) {
+                                    val updatedSkills = profile.skillsToTeach.toMutableList().apply {
+                                        add(com.example.westcon.data.SkillMastery(skillName = title, level = 1))
+                                    }
+                                    FirebaseManager.saveUserProfile(profile.copy(skillsToTeach = updatedSkills))
+                                }
+                                
+                                val post = com.example.westcon.data.SkillPost(
+                                    authorUid = currentUser?.uid ?: "",
+                                    authorName = profile?.name ?: "User",
+                                    authorIconName = profile?.profileIconName ?: "Person",
+                                    authorMastery = currentMastery,
+                                    department = profile?.department ?: "WVSU",
+                                    category = category,
+                                    title = title,
+                                    description = description,
+                                    isAnonymous = false
+                                )
+                                
+                                FirebaseManager.postSkill(post)
+                                isLoading = false
+                                onDismiss()
+                            }
+                        }
+                    },
+                    enabled = !isLoading && title.isNotBlank() && description.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = White, strokeWidth = 2.dp)
+                    } else {
+                        Text("Post Skill Listing", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun DashboardTopBar(onNotificationClick: () -> Unit = {}) {
-    Row(
+fun HomeFeed(
+    onPostClick: () -> Unit = {},
+    onExchangeClick: (com.example.westcon.data.SkillPost) -> Unit = {},
+    onMessageClick: (String, String) -> Unit = { _, _ -> }
+) {
+    val posts by FirebaseManager.getSkillPosts().collectAsState(initial = emptyList())
+    val currentUid = FirebaseManager.getCurrentUser()?.uid
+    var selectedCategory by remember { mutableStateOf("All Skills") }
+
+    val filteredPosts = remember(posts, selectedCategory) {
+        posts.filterNot { it.authorName.contains("Chris Daniel Apin", ignoreCase = true) }
+            .filter { selectedCategory == "All Skills" || it.category == selectedCategory }
+    }
+    
+    // Extract trending categories
+    val trendingCategories = filteredPosts.groupBy { it.category }
+        .map { it.key to it.value.size }
+        .sortedByDescending { it.second }
+        .take(3)
+        .map { it.first }
+
+    LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .fillMaxSize()
+            .background(Color(0xFFF0F2F5))
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // User Avatar Placeholder
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray)
-            ) {
-                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.align(Alignment.Center))
+        item { PostSkillCard(onClick = onPostClick) }
+        
+        if (trendingCategories.isNotEmpty()) {
+            item {
+                TrendingSection(
+                    categories = trendingCategories,
+                    onCategoryClick = { selectedCategory = it }
+                )
             }
-            Spacer(modifier = Modifier.width(12.dp))
+        }
+
+        item { 
+            CategoryChips(
+                selectedCategory = selectedCategory,
+                onCategorySelected = { selectedCategory = it }
+            ) 
+        }
+        
+        item {
             Text(
-                "WestCon",
+                if (selectedCategory == "All Skills") "Skill Marketplace" else "$selectedCategory Skills",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
                 color = WestconDarkBlue,
-                fontSize = 24.sp,
+                fontFamily = MomotrustFontFamily
+            )
+        }
+
+        items(filteredPosts, key = { it.id }) { post ->
+            SkillPostCard(
+                post = post,
+                isOwnPost = post.authorUid == currentUid,
+                onExchangeClick = { onExchangeClick(post) },
+                onMessageClick = { onMessageClick(post.authorUid, post.authorName) }
+            )
+        }
+        
+        if (filteredPosts.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No posts found in $selectedCategory",
+                        color = Color.Gray,
+                        fontFamily = MomotrustFontFamily
+                    )
+                }
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+fun TrendingSection(
+    categories: List<String>,
+    onCategoryClick: (String) -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.TrendingUp,
+                contentDescription = null,
+                tint = WestconYellow,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Trending Categories",
+                color = WestconDarkBlue,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = MomotrustFontFamily
             )
         }
-        IconButton(onClick = onNotificationClick) {
-            Icon(
-                Icons.Default.Notifications,
-                contentDescription = "Notifications",
-                tint = WestconDarkBlue,
-                modifier = Modifier.size(28.dp)
-            )
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            categories.forEach { category ->
+                Surface(
+                    onClick = { onCategoryClick(category) },
+                    color = White,
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(WestconYellow.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                when(category) {
+                                    "Technology" -> Icons.Default.Computer
+                                    "Academics" -> Icons.Default.School
+                                    "Arts" -> Icons.Default.Palette
+                                    else -> Icons.Default.AutoAwesome
+                                },
+                                contentDescription = null,
+                                tint = WestconYellow,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            category,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.DarkGray,
+                            maxLines = 1,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun PostSkillCard() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+fun DashboardTopBar(
+    title: String = "WestCon",
+    showLogo: Boolean = true,
+    onNotificationClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    hasNotifications: Boolean = false
+) {
+    Surface(
+        color = White,
+        shadowElevation = 4.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFE9ECEF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, tint = WestconDarkBlue, modifier = Modifier.size(20.dp))
+                if (showLogo) {
+                    Icon(
+                        painter = painterResource(id = com.example.westcon.R.drawable.icon),
+                        contentDescription = null,
+                        tint = WestconYellow,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
-                Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "What skill can you share today?",
-                    color = Color.Gray,
-                    fontSize = 16.sp,
+                    title,
+                    color = WestconDarkBlue,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = MomotrustFontFamily
                 )
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    var isAnonymous by remember { mutableStateOf(false) }
-                    Switch(
-                        checked = isAnonymous,
-                        onCheckedChange = { isAnonymous = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = WestconDarkBlue
-                        )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = WestconDarkBlue,
+                        modifier = Modifier.size(24.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Post Anonymously", fontSize = 12.sp, fontFamily = MomotrustFontFamily)
                 }
-                
-                Button(
-                    onClick = { /* TODO */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
-                    shape = RoundedCornerShape(20.dp),
-                    contentPadding = PaddingValues(horizontal = 24.dp)
-                ) {
-                    Text("Post Skill", color = Color.White, fontWeight = FontWeight.Bold)
+                IconButton(onClick = onNotificationClick) {
+                    Box {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = WestconDarkBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        if (hasNotifications) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red)
+                                    .align(Alignment.TopEnd)
+                                    .border(1.dp, Color.White, CircleShape)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -179,47 +669,159 @@ fun PostSkillCard() {
 }
 
 @Composable
-fun CategoryChips() {
-    val categories = listOf("All Skills", "Technology", "Academics", "Arts", "Language")
-    var selectedCategory by remember { mutableStateOf("All Skills") }
+fun PostSkillCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .shadow(4.dp, RoundedCornerShape(16.dp))
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = White),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF0F2F5)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Edit, contentDescription = null, tint = WestconDarkBlue, modifier = Modifier.size(22.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                "Share a skill with your fellow Taga-West...",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                fontFamily = MomotrustFontFamily,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.LightGray)
+        }
+    }
+}
+
+@Composable
+fun CategoryChips(
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
+    val categories = listOf("All Skills", "Technology", "Academics", "Arts", "Language", "Sports", "Others")
 
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 8.dp)
+        modifier = Modifier.padding(bottom = 12.dp)
     ) {
         items(categories) { category ->
             FilterChip(
                 selected = selectedCategory == category,
-                onClick = { selectedCategory = category },
-                label = { Text(category, fontFamily = MomotrustFontFamily) },
+                onClick = { onCategorySelected(category) },
+                label = { Text(category, fontFamily = MomotrustFontFamily, fontSize = 12.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = WestconDarkBlue,
-                    selectedLabelColor = Color.White,
-                    containerColor = Color.White,
+                    selectedLabelColor = White,
+                    containerColor = White,
                     labelColor = Color.Gray
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = selectedCategory == category,
-                    borderColor = Color.LightGray,
-                    selectedBorderColor = WestconDarkBlue
+                    borderColor = Color.Transparent,
+                    selectedBorderColor = Color.Transparent
                 ),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.shadow(if (selectedCategory == category) 4.dp else 0.dp, RoundedCornerShape(12.dp))
             )
         }
     }
 }
 
 @Composable
-fun SkillPostCard(post: com.example.westcon.data.SkillPost) {
+fun MasteryBadge(level: Int) {
+    val (label, color) = when(level) {
+        1 -> "Novice" to Color(0xFF94A3B8)
+        2 -> "Intermediate" to Color(0xFF10B981)
+        3 -> "Advanced" to Color(0xFF3B82F6)
+        4 -> "Expert" to Color(0xFF8B5CF6)
+        5 -> "Guru" to Color(0xFFF59E0B)
+        else -> "Novice" to Color(0xFF94A3B8)
+    }
+    
+    Surface(
+        color = color.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Verified,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                label,
+                color = color,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun SkillPostCard(
+    post: com.example.westcon.data.SkillPost,
+    isOwnPost: Boolean = false,
+    onExchangeClick: () -> Unit = {},
+    onMessageClick: () -> Unit = {}
+) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Post?") },
+            text = { Text("Are you sure you want to delete this skill post?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            FirebaseManager.deleteSkillPost(post.id)
+                            showDeleteConfirm = false
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .shadow(2.dp, RoundedCornerShape(20.dp)),
+        colors = CardDefaults.cardColors(containerColor = White),
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -227,38 +829,47 @@ fun SkillPostCard(post: com.example.westcon.data.SkillPost) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(if (post.isAnonymous) WestconDarkBlue else Color.LightGray),
+                            .background(if (post.isAnonymous) WestconDarkBlue else Color(0xFFF1F5F9)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            if (post.isAnonymous) Icons.Default.VisibilityOff else Icons.Default.Person,
+                            if (post.isAnonymous) Icons.Default.VisibilityOff else UIUtils.getProfileIcon(post.authorIconName),
                             contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            tint = if (post.isAnonymous) White else WestconDarkBlue,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(post.authorName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("${post.department} • 2h ago", color = Color.Gray, fontSize = 12.sp)
+                        Text(
+                            post.authorName, 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 15.sp,
+                            color = WestconDarkBlue
+                        )
+                        Text(
+                            "${post.department} • ${UIUtils.formatTimestamp(post.timestamp)}", 
+                            color = Color.Gray, 
+                            fontSize = 11.sp
+                        )
                     }
                 }
                 
                 Surface(
-                    color = WestconYellow.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(8.dp)
+                    color = WestconYellow.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
                         post.category,
-                        color = Color(0xFF856404),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        color = Color(0xFF92400E),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
             }
@@ -267,42 +878,77 @@ fun SkillPostCard(post: com.example.westcon.data.SkillPost) {
             
             Text(
                 post.title,
-                fontSize = 18.sp,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
                 color = WestconDarkBlue,
-                fontFamily = MomotrustFontFamily
+                fontFamily = MomotrustFontFamily,
+                lineHeight = 24.sp
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
+            MasteryBadge(post.authorMastery)
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
             Text(
                 post.description,
                 fontSize = 14.sp,
-                color = Color.DarkGray,
-                lineHeight = 20.sp
+                color = Color(0xFF475569),
+                lineHeight = 22.sp
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Exchange", fontSize = 14.sp)
+            if (!isOwnPost) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onExchangeClick,
+                        modifier = Modifier.weight(1.2f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
+                        shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Exchange", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    OutlinedButton(
+                        onClick = onMessageClick,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        border = BorderStroke(1.5.dp, WestconDarkBlue),
+                        shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, modifier = Modifier.size(18.dp), tint = WestconDarkBlue)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Message", color = WestconDarkBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
-                
-                Button(
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.weight(0.4f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE9ECEF)),
-                    shape = RoundedCornerShape(12.dp)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Message", color = WestconDarkBlue, fontSize = 14.sp)
+                    Text(
+                        "Your Listing",
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        fontStyle = FontStyle.Italic
+                    )
+                    IconButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.DeleteOutline,
+                            contentDescription = "Delete",
+                            tint = Color.Red.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

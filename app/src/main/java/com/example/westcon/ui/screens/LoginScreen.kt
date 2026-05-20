@@ -14,7 +14,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.ui.theme.*
 import kotlinx.coroutines.launch
+import com.example.westcon.data.FirebaseManager
 
 @Composable
 fun LoginScreen(onBackClick: () -> Unit, onLoginSuccess: () -> Unit) {
@@ -107,15 +109,26 @@ fun LoginScreen(onBackClick: () -> Unit, onLoginSuccess: () -> Unit) {
                         errorMessage = "Please fill all fields"
                         return@Button
                     }
+                    if (!email.endsWith("@wvsu.edu.ph")) {
+                        errorMessage = "Please use your WVSU email (@wvsu.edu.ph)"
+                        return@Button
+                    }
                     isLoading = true
                     errorMessage = null
                     scope.launch {
-                        val result = com.example.westcon.data.FirebaseManager.login(email, password)
+                        val result = FirebaseManager.login(email, password)
                         isLoading = false
                         if (result.isSuccess) {
                             onLoginSuccess()
                         } else {
-                            errorMessage = result.exceptionOrNull()?.message ?: "Login failed"
+                            val exception = result.exceptionOrNull()
+                            errorMessage = when {
+                                exception?.message?.contains("invalid-credential") == true || 
+                                exception?.message?.contains("wrong password") == true ||
+                                exception?.message?.contains("no user record") == true -> 
+                                    "Invalid email or password"
+                                else -> exception?.message ?: "Login failed"
+                            }
                         }
                     }
                 },

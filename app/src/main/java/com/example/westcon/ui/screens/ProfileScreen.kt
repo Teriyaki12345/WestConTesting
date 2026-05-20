@@ -2,203 +2,239 @@ package com.example.westcon.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.data.FirebaseManager
+import com.example.westcon.data.UserProfile
+import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.theme.*
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalLayoutApi::class)
+// --- Utility Components ---
+
 @Composable
-fun ProfileScreen() {
-    LazyColumn(
+fun ProfileStatBadge(icon: ImageVector, label: String, value: String) {
+    Card(
         modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F9FA)),
-        contentPadding = PaddingValues(bottom = 16.dp)
+            .width(100.dp)
+            .shadow(elevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF))
     ) {
-        item { ProfileHeaderCard() }
-        item { AboutSection() }
-        item { SkillsCanTeachSection() }
-        item { SkillsLearningSection() }
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = WestconDarkBlue)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(value, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = WestconDarkBlue, fontFamily = MomotrustFontFamily)
+            Text(label, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+        }
     }
 }
 
 @Composable
-fun ProfileHeaderCard() {
+fun MasteryBadgeSmall(level: Int) {
+    val (label, color) = when(level) {
+        1 -> "Novice" to Color(0xFFADB5BD)
+        2 -> "Intermediate" to Color(0xFF4CAF50)
+        3 -> "Advanced" to Color(0xFF2196F3)
+        4 -> "Expert" to Color(0xFF9C27B0)
+        5 -> "Guru" to Color(0xFFFF9800)
+        else -> "Novice" to Color(0xFFADB5BD)
+    }
+    Surface(
+        color = color.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            label, 
+            color = color, 
+            fontSize = 9.sp, 
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+        )
+    }
+}
+
+// --- Main Header ---
+
+@Composable
+fun ProfileHeaderCard(
+    profile: UserProfile, 
+    isOwnProfile: Boolean = true,
+    onIconSelect: (String) -> Unit = {}
+) {
+    var showIconPicker by remember { mutableStateOf(false) }
+
+    if (showIconPicker) {
+        AlertDialog(
+            onDismissRequest = { showIconPicker = false },
+            title = { Text("Choose an Avatar", fontFamily = MomotrustFontFamily, fontWeight = FontWeight.Bold) },
+            text = {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.fillMaxWidth().height(320.dp),
+                    contentPadding = PaddingValues(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(UIUtils.availableIcons) { iconName ->
+                        Box(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(CircleShape)
+                                .background(if (profile.profileIconName == iconName) WestconYellow.copy(alpha = 0.2f) else Color.Transparent)
+                                .border(1.dp, if (profile.profileIconName == iconName) WestconYellow else Color(0xFFE9ECEF), CircleShape)
+                                .clickable {
+                                    onIconSelect(iconName)
+                                    showIconPicker = false
+                                }
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                UIUtils.getProfileIcon(iconName),
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = if (profile.profileIconName == iconName) WestconDarkBlue else Color.Gray
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showIconPicker = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(28.dp)
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Profile Picture with Yellow Border
             Box(contentAlignment = Alignment.BottomEnd) {
                 Box(
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape)
+                        .background(Color(0xFFF1F3F5))
                         .border(4.dp, WestconYellow, CircleShape)
-                        .background(Color.LightGray),
+                        .padding(4.dp) // Gap between border and icon
+                        .clickable(enabled = isOwnProfile) { showIconPicker = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color.Gray)
+                    Icon(
+                        UIUtils.getProfileIcon(profile.profileIconName),
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = WestconDarkBlue
+                    )
                 }
-                // Verification Badge
                 Surface(
                     color = WestconDarkBlue,
                     shape = CircleShape,
-                    modifier = Modifier.size(28.dp).border(2.dp, Color.White, CircleShape)
+                    modifier = Modifier
+                        .size(30.dp)
+                        .offset(x = (-4).dp, y = (-4).dp)
+                        .border(3.dp, Color.White, CircleShape)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = "Verified", tint = Color.White, modifier = Modifier.padding(4.dp))
+                    Icon(Icons.Default.Check, contentDescription = "Verified", tint = Color.White, modifier = Modifier.padding(6.dp))
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                "Jaspher John Ebarle",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = WestconDarkBlue,
-                fontFamily = MomotrustFontFamily
-            )
-
-            Text(
-                "COLLEGE OF ICT | BS COMPUTER SCIENCE",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF8B7355), // Brownish gold color from screenshot
-                fontFamily = MomotrustFontFamily,
+                profile.name, 
+                fontSize = 24.sp, 
+                fontWeight = FontWeight.Bold, 
+                color = WestconDarkBlue, 
+                fontFamily = MomotrustFontFamily, 
                 textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Stats Badges
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ProfileStatBadge(Icons.Default.History, "Year 3")
-                ProfileStatBadge(Icons.Default.Star, "4.9 Rating")
-                ProfileStatBadge(Icons.Default.SwapHoriz, "12 Swaps")
+            
+            Surface(
+                color = Color(0xFF8B7355).copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text(
+                    "${profile.department} • ${profile.course}", 
+                    fontSize = 12.sp, 
+                    fontWeight = FontWeight.Bold, 
+                    color = Color(0xFF8B7355), 
+                    fontFamily = MomotrustFontFamily, 
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Action Buttons
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Message", fontWeight = FontWeight.Bold)
-                }
-                OutlinedButton(
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, WestconDarkBlue),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Exchange Skills", color = WestconDarkBlue, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProfileStatBadge(icon: ImageVector, text: String) {
-    Surface(
-        color = Color(0xFFF1F3F5),
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-        }
-    }
-}
-
-@Composable
-fun AboutSection() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("About", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = WestconDarkBlue)
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                "Passionate tech enthusiast focused on full-stack development and data structures. I enjoy breaking down complex coding concepts into digestible bits for my peers. Looking to expand my creative horizon through digital design and photography.",
-                fontSize = 13.sp,
-                color = Color.DarkGray,
-                lineHeight = 20.sp
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun SkillsCanTeachSection() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = WestconDarkBlue),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Groups, contentDescription = null, tint = WestconYellow, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Skills I Can Teach", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            FlowRow(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                listOf("React & Next.js", "Python Basics", "Academic Writing", "UI/UX Logic").forEach { skill ->
-                    Surface(
-                        color = Color.White.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                ProfileStatBadge(icon = Icons.Default.History, label = "Year Level", value = profile.year)
+                ProfileStatBadge(icon = Icons.Default.Star, label = "Trust Score", value = String.format("%.1f", profile.rating))
+                ProfileStatBadge(icon = Icons.Default.SwapCalls, label = "Total Swaps", value = profile.swaps.toString())
+            }
+
+            if (!isOwnProfile) {
+                Spacer(modifier = Modifier.height(28.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = { /* TODO */ }, 
+                        modifier = Modifier.weight(1f).height(54.dp), 
+                        colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue), 
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
-                        Text(
-                            skill,
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                        Icon(Icons.Default.Message, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Message", fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                    }
+                    OutlinedButton(
+                        onClick = { /* TODO */ }, 
+                        modifier = Modifier.weight(1f).height(54.dp), 
+                        border = androidx.compose.foundation.BorderStroke(2.dp, WestconDarkBlue), 
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp), tint = WestconDarkBlue)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Exchange", color = WestconDarkBlue, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                     }
                 }
             }
@@ -206,60 +242,432 @@ fun SkillsCanTeachSection() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun FlowRow(
-    modifier: Modifier = Modifier,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
-    content: @Composable FlowRowScope.() -> Unit
-) {
-    androidx.compose.foundation.layout.FlowRow(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement,
-        verticalArrangement = verticalArrangement,
-        content = content
-    )
-}
+// --- Section Components ---
 
 @Composable
-fun SkillsLearningSection() {
+fun EditableAboutSection(
+    isEditing: Boolean,
+    aboutText: String,
+    onAboutChange: (String) -> Unit,
+    onEditClick: () -> Unit,
+    onSaveClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(16.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(24.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.TrendingUp, contentDescription = null, tint = Color(0xFF856404), modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Skills I'm Learning", fontWeight = FontWeight.Bold, color = WestconDarkBlue, fontSize = 14.sp)
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = WestconDarkBlue, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Bio", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = WestconDarkBlue, fontFamily = MomotrustFontFamily)
+                }
+                if (isEditing) {
+                    Row {
+                        IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = Color(0xFF4CAF50)) }
+                        IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color(0xFFE57373)) }
+                    }
+                } else {
+                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp), tint = Color.Gray) }
+                }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            if (isEditing) {
+                OutlinedTextField(
+                    value = aboutText, 
+                    onValueChange = onAboutChange, 
+                    modifier = Modifier.fillMaxWidth(), 
+                    placeholder = { Text("Tell the WestCon community what makes you unique...") }, 
+                    maxLines = 5,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = WestconDarkBlue,
+                        unfocusedBorderColor = Color(0xFFE9ECEF)
+                    )
+                )
+            } else {
+                Text(
+                    if (aboutText.isEmpty()) "Share a bit about yourself, your interests, and what you're passionate about!" else aboutText, 
+                    fontSize = 14.sp, 
+                    color = if (aboutText.isEmpty()) Color.Gray else Color.DarkGray, 
+                    lineHeight = 22.sp,
+                    fontStyle = if (aboutText.isEmpty()) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun EditableTeachableSkillsSection(
+    isEditing: Boolean,
+    skills: List<com.example.westcon.data.SkillMastery>,
+    newSkillText: String,
+    onNewSkillChange: (String) -> Unit,
+    onAddSkill: () -> Unit,
+    onRemoveSkill: (com.example.westcon.data.SkillMastery) -> Unit,
+    onEditClick: () -> Unit,
+    onSaveClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = WestconDarkBlue),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.School, contentDescription = null, tint = WestconYellow, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Skills I Can Teach", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp, fontFamily = MomotrustFontFamily)
+                }
+                if (isEditing) {
+                    Row {
+                        IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = WestconYellow) }
+                        IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color.White.copy(alpha = 0.7f)) }
+                    }
+                } else {
+                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp)) }
+                }
+            }
             
-            SkillProgressBar("Digital Illustration", 0.45f)
-            SkillProgressBar("Digital Illustration", 0.45f)
-            SkillProgressBar("Digital Illustration", 0.45f)
+            if (isEditing) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newSkillText, onValueChange = onNewSkillChange, modifier = Modifier.weight(1f), placeholder = { Text("Add a skill you've mastered...") },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.08f), 
+                            focusedContainerColor = Color.White.copy(alpha = 0.12f), 
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f), 
+                            focusedBorderColor = WestconYellow,
+                            focusedTextColor = Color.White, 
+                            unfocusedTextColor = Color.White,
+                            focusedPlaceholderColor = Color.White.copy(alpha = 0.4f),
+                            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.4f)
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = onAddSkill,
+                        modifier = Modifier.background(WestconYellow, CircleShape).size(48.dp)
+                    ) { Icon(Icons.Default.Add, contentDescription = "Add", tint = WestconDarkBlue) }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            if (skills.isEmpty()) {
+                Text("No skills listed yet. Add something you can share with others!", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            } else {
+                FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    skills.forEach { skill ->
+                        Surface(
+                            color = Color.White.copy(alpha = 0.12f), 
+                            shape = RoundedCornerShape(16.dp), 
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(skill.skillName, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, fontFamily = MomotrustFontFamily)
+                                    if (isEditing) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(Icons.Default.Close, contentDescription = "Remove", tint = WestconYellow, modifier = Modifier.size(16.dp).clickable { onRemoveSkill(skill) })
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                                    Icon(Icons.Default.Star, contentDescription = null, tint = WestconYellow, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(String.format("%.1f", skill.averageRating), color = WestconYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    MasteryBadgeSmall(skill.level)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun SkillProgressBar(skill: String, progress: Float) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(skill, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            Text("${(progress * 100).toInt()}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF856404))
+fun EditableLearningSkillsSection(
+    isEditing: Boolean,
+    skills: Map<String, Int>,
+    newSkillText: String,
+    onNewSkillChange: (String) -> Unit,
+    onAddSkill: () -> Unit,
+    onRemoveSkill: (String) -> Unit,
+    onProgressChange: (String, Int) -> Unit,
+    onEditClick: () -> Unit,
+    onSaveClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(24.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.TrendingUp, contentDescription = null, tint = WestconDarkBlue, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Skills I'm Learning", fontWeight = FontWeight.Bold, color = WestconDarkBlue, fontSize = 18.sp, fontFamily = MomotrustFontFamily)
+                }
+                if (isEditing) {
+                    Row {
+                        IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = Color(0xFF4CAF50)) }
+                        IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color(0xFFE57373)) }
+                    }
+                } else {
+                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp), tint = Color.Gray) }
+                }
+            }
+            
+            if (isEditing) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newSkillText, onValueChange = onNewSkillChange, modifier = Modifier.weight(1f), placeholder = { Text("What do you want to learn?") }, 
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = onAddSkill,
+                        modifier = Modifier.background(WestconDarkBlue, CircleShape).size(48.dp)
+                    ) { Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White) }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            if (skills.isEmpty()) {
+                Text("Ready to grow? Add a skill you want to learn!", color = Color.Gray, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            } else {
+                skills.forEach { (skill, progress) ->
+                    Column(modifier = Modifier.padding(vertical = 10.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(skill, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue, fontFamily = MomotrustFontFamily)
+                                if (isEditing) {
+                                    IconButton(onClick = { onRemoveSkill(skill) }, modifier = Modifier.size(32.dp).padding(start = 8.dp)) {
+                                        Icon(Icons.Default.DeleteOutline, contentDescription = "Remove", tint = Color(0xFFE57373), modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                            Text("${progress}%", fontSize = 13.sp, fontWeight = FontWeight.Black, color = WestconDarkBlue, fontFamily = MomotrustFontFamily)
+                        }
+                        if (isEditing) {
+                            Slider(
+                                value = progress.toFloat(), 
+                                onValueChange = { onProgressChange(skill, it.toInt()) }, 
+                                valueRange = 0f..100f, 
+                                colors = SliderDefaults.colors(thumbColor = WestconYellow, activeTrackColor = WestconYellow, inactiveTrackColor = Color(0xFFE9ECEF))
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { progress / 100f }, 
+                                modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)), 
+                                color = WestconYellow, 
+                                trackColor = Color(0xFFF1F3F5)
+                            )
+                        }
+                    }
+                }
+            }
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-            color = WestconYellow,
-            trackColor = Color(0xFFE9ECEF)
-        )
+    }
+}
+
+// --- Main Screen ---
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ProfileScreen(
+    isOwnProfile: Boolean = true,
+    onLogoutClick: () -> Unit = {}
+) {
+    var userProfile by remember { mutableStateOf<UserProfile?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+
+    var isEditingAbout by remember { mutableStateOf(false) }
+    var editAboutText by remember { mutableStateOf("") }
+    var isEditingTeachableSkills by remember { mutableStateOf(false) }
+    val editTeachableSkills = remember { mutableStateListOf<com.example.westcon.data.SkillMastery>() }
+    var newTeachableSkill by remember { mutableStateOf("") }
+    var isEditingLearningSkills by remember { mutableStateOf(false) }
+    val editLearningSkills = remember { mutableStateMapOf<String, Int>() }
+    var newLearningSkill by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val currentUser = FirebaseManager.getCurrentUser()
+        if (currentUser != null) {
+            val profile = FirebaseManager.getUserProfile(currentUser.uid)
+            userProfile = profile
+            if (profile != null) {
+                editAboutText = profile.about
+                editTeachableSkills.clear()
+                editTeachableSkills.addAll(profile.skillsToTeach)
+                editLearningSkills.clear()
+                editLearningSkills.putAll(profile.skillsLearning)
+            }
+        }
+        isLoading = false
+    }
+
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = WestconDarkBlue, strokeWidth = 3.dp)
+        }
+    } else if (userProfile == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.ErrorOutline, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Gray)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Failed to load profile", color = Color.Gray, fontFamily = MomotrustFontFamily)
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onLogoutClick, colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)) { 
+                    Text("Go Back") 
+                }
+            }
+        }
+    } else {
+        val profile = userProfile!!
+        
+        fun saveProfile(updatedProfile: UserProfile = profile) {
+            scope.launch {
+                val finalProfile = updatedProfile.copy(
+                    about = editAboutText,
+                    skillsToTeach = editTeachableSkills.toList(),
+                    skillsLearning = editLearningSkills.toMap()
+                )
+                val result = FirebaseManager.saveUserProfile(finalProfile)
+                if (result.isSuccess) {
+                    userProfile = finalProfile
+                    isEditingAbout = false
+                    isEditingTeachableSkills = false
+                    isEditingLearningSkills = false
+                }
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA))) {
+            // Gradient Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(WestconDarkBlue, Color(0xFF002244))
+                        )
+                    )
+            )
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 100.dp, bottom = 48.dp)
+            ) {
+                item { 
+                    ProfileHeaderCard(
+                        profile = profile, 
+                        isOwnProfile = isOwnProfile,
+                        onIconSelect = { newIcon ->
+                            saveProfile(profile.copy(profileIconName = newIcon))
+                        }
+                    ) 
+                }
+            
+                item {
+                    EditableAboutSection(
+                        isEditing = isEditingAbout && isOwnProfile,
+                        aboutText = editAboutText,
+                        onAboutChange = { editAboutText = it },
+                        onEditClick = { isEditingAbout = true },
+                        onSaveClick = { saveProfile() },
+                        onCancelClick = { editAboutText = profile.about; isEditingAbout = false }
+                    )
+                }
+
+                item {
+                    EditableTeachableSkillsSection(
+                        isEditing = isEditingTeachableSkills && isOwnProfile,
+                        skills = editTeachableSkills,
+                        newSkillText = newTeachableSkill,
+                        onNewSkillChange = { newTeachableSkill = it },
+                        onAddSkill = {
+                            if (newTeachableSkill.isNotBlank()) {
+                                editTeachableSkills.add(com.example.westcon.data.SkillMastery(skillName = newTeachableSkill.trim()))
+                                newTeachableSkill = ""
+                            }
+                        },
+                        onRemoveSkill = { editTeachableSkills.remove(it) },
+                        onEditClick = { isEditingTeachableSkills = true },
+                        onSaveClick = { saveProfile() },
+                        onCancelClick = {
+                            editTeachableSkills.clear()
+                            editTeachableSkills.addAll(profile.skillsToTeach)
+                            isEditingTeachableSkills = false
+                        }
+                    )
+                }
+
+                item {
+                    EditableLearningSkillsSection(
+                        isEditing = isEditingLearningSkills && isOwnProfile,
+                        skills = editLearningSkills,
+                        newSkillText = newLearningSkill,
+                        onNewSkillChange = { newLearningSkill = it },
+                        onAddSkill = {
+                            if (newLearningSkill.isNotBlank()) {
+                                editLearningSkills[newLearningSkill.trim()] = 0
+                                newLearningSkill = ""
+                            }
+                        },
+                        onRemoveSkill = { editLearningSkills.remove(it) },
+                        onProgressChange = { skill, progress -> editLearningSkills[skill] = progress },
+                        onEditClick = { isEditingLearningSkills = true },
+                        onSaveClick = { saveProfile() },
+                        onCancelClick = {
+                            editLearningSkills.clear()
+                            editLearningSkills.putAll(profile.skillsLearning)
+                            isEditingLearningSkills = false
+                        }
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onLogoutClick,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF)),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                    ) {
+                        Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFE57373))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Log Out", color = Color(0xFFE57373), fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                    }
+                }
+            }
+        }
     }
 }

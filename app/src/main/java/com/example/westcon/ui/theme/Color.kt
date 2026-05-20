@@ -8,6 +8,10 @@ val WestConLightBlue = Color(0xFF1E5BA8)
 val WestConGold = Color(0xFFFFA500)
 val WestConDarkBlue = Color(0xFF003A99)
 
+val WestconDarkBlue = Color(0xFF001D3D)
+val WestconYellow = Color(0xFFFFD700)
+val WestconYellowLight = Color(0xFFFFE57F)
+
 // Gradient Colors
 val GradientStart = Color(0xFF0052CC)
 val GradientEnd = Color(0xFF003A99)

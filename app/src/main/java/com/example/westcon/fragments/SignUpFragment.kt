@@ -7,7 +7,9 @@ class SignUpFragment : BaseFragment() {
     @Composable
     override fun ScreenContent() {
         RegisterScreen(
-            onJoinClick = { navigateTo(SignUpStepTwoFragment()) },
+            onJoinClick = { email, password ->
+                navigateTo(SignUpStepTwoFragment.newInstance(email, password))
+            },
             onBackClick = { parentFragmentManager.popBackStack() }
         )
     }
