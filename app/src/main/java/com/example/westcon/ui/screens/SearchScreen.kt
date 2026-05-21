@@ -31,7 +31,10 @@ import com.example.westcon.ui.UIUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(onBackClick: () -> Unit) {
+fun SearchScreen(
+    onBackClick: () -> Unit,
+    onProfileClick: (String) -> Unit = {}
+) {
     var searchQuery by remember { mutableStateOf("") }
     val posts by FirebaseManager.getSkillPosts().collectAsState(initial = emptyList())
     
@@ -110,7 +113,7 @@ fun SearchScreen(onBackClick: () -> Unit) {
             if (searchQuery.isEmpty()) {
                 InitialSearchState(onCategoryClick = { searchQuery = it })
             } else {
-                SearchResultsContent(searchQuery, filteredPosts)
+                SearchResultsContent(searchQuery, filteredPosts, onProfileClick = onProfileClick)
             }
         }
     }
@@ -253,7 +256,7 @@ fun RecentSearchItem(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun SearchResultsContent(query: String, results: List<SkillPost>) {
+fun SearchResultsContent(query: String, results: List<SkillPost>, onProfileClick: (String) -> Unit = {}) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -331,7 +334,8 @@ fun SearchResultsContent(query: String, results: List<SkillPost>) {
                         post = post,
                         isOwnPost = post.authorUid == FirebaseManager.getCurrentUser()?.uid,
                         onExchangeClick = { /* Handle in Dashboard or separate state */ },
-                        onMessageClick = { /* Handle message */ }
+                        onMessageClick = { /* Handle message */ },
+                        onProfileClick = { onProfileClick(post.authorUid) }
                     )
                 }
             }

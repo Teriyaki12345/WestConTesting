@@ -36,7 +36,7 @@ import com.example.westcon.data.FreedomPost
 import com.example.westcon.ui.UIUtils
 
 @Composable
-fun FreedomWallScreen() {
+fun FreedomWallScreen(onProfileClick: (String) -> Unit = {}) {
     val posts by FirebaseManager.getFreedomPosts().collectAsState(initial = emptyList())
     val filteredPosts = remember(posts) { posts.filter { it.content.isNotBlank() } }
     val currentUid = FirebaseManager.getCurrentUser()?.uid
@@ -62,7 +62,8 @@ fun FreedomWallScreen() {
                     FreedomPostCard(
                         post = post, 
                         isOwnPost = post.authorUid == currentUid,
-                        currentUid = currentUid ?: ""
+                        currentUid = currentUid ?: "",
+                        onProfileClick = { onProfileClick(post.authorUid) }
                     )
                 }
             }
@@ -282,7 +283,12 @@ fun FreedomWallFilters() {
 }
 
 @Composable
-fun FreedomPostCard(post: FreedomPost, isOwnPost: Boolean, currentUid: String) {
+fun FreedomPostCard(
+    post: FreedomPost, 
+    isOwnPost: Boolean, 
+    currentUid: String,
+    onProfileClick: () -> Unit = {}
+) {
     val cardColor = try { Color(android.graphics.Color.parseColor(post.colorHex)) } catch (e: Exception) { Color(0xFFE3F2FD) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val isLiked = post.likedBy.contains(currentUid)
@@ -322,6 +328,40 @@ fun FreedomPostCard(post: FreedomPost, isOwnPost: Boolean, currentUid: String) {
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            if (!post.isAnonymous) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onProfileClick() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            UIUtils.getProfileIcon(post.authorIconName),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = WestconDarkBlue
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        post.authorName,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black.copy(alpha = 0.7f),
+                        maxLines = 1
+                    )
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

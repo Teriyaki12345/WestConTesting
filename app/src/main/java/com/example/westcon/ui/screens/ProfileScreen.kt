@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -12,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -97,7 +99,9 @@ fun MasteryBadgeSmall(level: Int) {
 fun ProfileHeaderCard(
     profile: UserProfile, 
     isOwnProfile: Boolean = true,
-    onIconSelect: (String) -> Unit = {}
+    onIconSelect: (String) -> Unit = {},
+    onMessageClick: () -> Unit = {},
+    onExchangeClick: () -> Unit = {}
 ) {
     var showIconPicker by remember { mutableStateOf(false) }
 
@@ -244,7 +248,7 @@ fun ProfileHeaderCard(
                 Spacer(modifier = Modifier.height(28.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(
-                        onClick = { /* TODO */ }, 
+                        onClick = onMessageClick, 
                         modifier = Modifier.weight(1f).height(54.dp), 
                         colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue), 
                         shape = RoundedCornerShape(16.dp),
@@ -255,7 +259,7 @@ fun ProfileHeaderCard(
                         Text("Message", fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                     }
                     OutlinedButton(
-                        onClick = { /* TODO */ }, 
+                        onClick = onExchangeClick, 
                         modifier = Modifier.weight(1f).height(54.dp), 
                         border = androidx.compose.foundation.BorderStroke(2.dp, WestconDarkBlue), 
                         shape = RoundedCornerShape(16.dp)
@@ -275,6 +279,7 @@ fun ProfileHeaderCard(
 @Composable
 fun EditableAboutSection(
     isEditing: Boolean,
+    isOwnProfile: Boolean = true,
     aboutText: String,
     onAboutChange: (String) -> Unit,
     onEditClick: () -> Unit,
@@ -295,13 +300,15 @@ fun EditableAboutSection(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Bio", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = WestconDarkBlue, fontFamily = MomotrustFontFamily)
                 }
-                if (isEditing) {
-                    Row {
-                        IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = Color(0xFF4CAF50)) }
-                        IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color(0xFFE57373)) }
+                if (isOwnProfile) {
+                    if (isEditing) {
+                        Row {
+                            IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = Color(0xFF4CAF50)) }
+                            IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color(0xFFE57373)) }
+                        }
+                    } else {
+                        IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp), tint = Color.Gray) }
                     }
-                } else {
-                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp), tint = Color.Gray) }
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -337,6 +344,7 @@ fun EditableAboutSection(
 @Composable
 fun EditableTeachableSkillsSection(
     isEditing: Boolean,
+    isOwnProfile: Boolean = true,
     skills: List<com.example.westcon.data.SkillMastery>,
     newSkillText: String,
     onNewSkillChange: (String) -> Unit,
@@ -359,17 +367,19 @@ fun EditableTeachableSkillsSection(
                     Spacer(modifier = Modifier.width(10.dp))
                     Text("Skills I Can Teach", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp, fontFamily = MomotrustFontFamily)
                 }
-                if (isEditing) {
-                    Row {
-                        IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = WestconYellow) }
-                        IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color.White.copy(alpha = 0.7f)) }
+                if (isOwnProfile) {
+                    if (isEditing) {
+                        Row {
+                            IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = WestconYellow) }
+                            IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color.White.copy(alpha = 0.7f)) }
+                        }
+                    } else {
+                        IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp)) }
                     }
-                } else {
-                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp)) }
                 }
             }
             
-            if (isEditing) {
+            if (isEditing && isOwnProfile) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -434,6 +444,7 @@ fun EditableTeachableSkillsSection(
 @Composable
 fun EditableLearningSkillsSection(
     isEditing: Boolean,
+    isOwnProfile: Boolean = true,
     skills: Map<String, Int>,
     newSkillText: String,
     onNewSkillChange: (String) -> Unit,
@@ -458,17 +469,19 @@ fun EditableLearningSkillsSection(
                     Spacer(modifier = Modifier.width(10.dp))
                     Text("Skills I'm Learning", fontWeight = FontWeight.Bold, color = WestconDarkBlue, fontSize = 18.sp, fontFamily = MomotrustFontFamily)
                 }
-                if (isEditing) {
-                    Row {
-                        IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = Color(0xFF4CAF50)) }
-                        IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color(0xFFE57373)) }
+                if (isOwnProfile) {
+                    if (isEditing) {
+                        Row {
+                            IconButton(onClick = onSaveClick) { Icon(Icons.Default.CheckCircle, contentDescription = "Save", tint = Color(0xFF4CAF50)) }
+                            IconButton(onClick = onCancelClick) { Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = Color(0xFFE57373)) }
+                        }
+                    } else {
+                        IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp), tint = Color.Gray) }
                     }
-                } else {
-                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp), tint = Color.Gray) }
                 }
             }
             
-            if (isEditing) {
+            if (isEditing && isOwnProfile) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -532,16 +545,20 @@ fun EditableLearningSkillsSection(
 }
 
 // --- Main Screen ---
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(
-    isOwnProfile: Boolean = true,
-    onLogoutClick: () -> Unit = {}
+    userId: String? = null,
+    onLogoutClick: () -> Unit = {},
+    onBackClick: (() -> Unit)? = null,
+    onMessageClick: (String, String) -> Unit = { _, _ -> },
+    onExchangeClick: (String) -> Unit = {}
 ) {
     var userProfile by remember { mutableStateOf<UserProfile?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+    val currentUid = FirebaseManager.getCurrentUser()?.uid
+    val isOwnProfile = userId == null || userId == currentUid
 
     var isEditingAbout by remember { mutableStateOf(false) }
     var editAboutText by remember { mutableStateOf("") }
@@ -552,10 +569,10 @@ fun ProfileScreen(
     val editLearningSkills = remember { mutableStateMapOf<String, Int>() }
     var newLearningSkill by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        val currentUser = FirebaseManager.getCurrentUser()
-        if (currentUser != null) {
-            val profile = FirebaseManager.getUserProfile(currentUser.uid)
+    LaunchedEffect(userId) {
+        val targetUid = userId ?: currentUid
+        if (targetUid != null) {
+            val profile = FirebaseManager.getUserProfile(targetUid)
             userProfile = profile
             if (profile != null) {
                 editAboutText = profile.about
@@ -619,7 +636,7 @@ fun ProfileScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 100.dp, bottom = 48.dp)
+                contentPadding = PaddingValues(top = if (onBackClick != null) 200.dp else 140.dp, bottom = 48.dp)
             ) {
                 item { 
                     ProfileHeaderCard(
@@ -627,13 +644,16 @@ fun ProfileScreen(
                         isOwnProfile = isOwnProfile,
                         onIconSelect = { newIcon ->
                             saveProfile(profile.copy(profileIconName = newIcon))
-                        }
+                        },
+                        onMessageClick = { onMessageClick(profile.uid, profile.name) },
+                        onExchangeClick = { onExchangeClick(profile.uid) }
                     ) 
                 }
             
                 item {
                     EditableAboutSection(
                         isEditing = isEditingAbout && isOwnProfile,
+                        isOwnProfile = isOwnProfile,
                         aboutText = editAboutText,
                         onAboutChange = { editAboutText = it },
                         onEditClick = { isEditingAbout = true },
@@ -645,6 +665,7 @@ fun ProfileScreen(
                 item {
                     EditableTeachableSkillsSection(
                         isEditing = isEditingTeachableSkills && isOwnProfile,
+                        isOwnProfile = isOwnProfile,
                         skills = editTeachableSkills,
                         newSkillText = newTeachableSkill,
                         onNewSkillChange = { newTeachableSkill = it },
@@ -668,6 +689,7 @@ fun ProfileScreen(
                 item {
                     EditableLearningSkillsSection(
                         isEditing = isEditingLearningSkills && isOwnProfile,
+                        isOwnProfile = isOwnProfile,
                         skills = editLearningSkills,
                         newSkillText = newLearningSkill,
                         onNewSkillChange = { newLearningSkill = it },
@@ -689,19 +711,60 @@ fun ProfileScreen(
                     )
                 }
 
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onLogoutClick,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF)),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                if (isOwnProfile) {
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = onLogoutClick,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF)),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                        ) {
+                            Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFE57373))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Log Out", color = Color(0xFFE57373), fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                        }
+                    }
+                }
+            }
+
+            // Top Bar with Back Button (Drawn last to float on top)
+            if (onBackClick != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color(0xCC002244), Color.Transparent)
+                            )
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFE57373))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Log Out", color = Color(0xFFE57373), fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                        Surface(
+                            onClick = onBackClick,
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 6.dp,
+                            tonalElevation = 6.dp,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = WestconDarkBlue,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

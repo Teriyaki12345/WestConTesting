@@ -409,6 +409,8 @@ fun RateUserDialog(
                         shape = RoundedCornerShape(16.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
                             focusedBorderColor = WestconDarkBlue,
                             unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                         )

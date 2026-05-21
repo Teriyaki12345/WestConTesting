@@ -44,6 +44,8 @@ data class SkillPost(
 data class FreedomPost(
     val id: String = "",
     val authorUid: String = "",
+    val authorName: String = "User",
+    val authorIconName: String = "Person",
     val content: String = "",
     val timestamp: Timestamp = Timestamp.now(),
     val likes: Int = 0,

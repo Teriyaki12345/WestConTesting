@@ -75,4 +75,14 @@ abstract class BaseFragment : Fragment() {
             .addToBackStack(null)
             .commit()
     }
+
+    fun clearBackStackAndNavigate(fragment: Fragment) {
+        // Pop everything from the back stack
+        parentFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        
+        // Navigate to the new fragment without adding to back stack
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, fragment)
+            .commit()
+    }
 }

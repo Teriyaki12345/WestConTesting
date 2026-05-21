@@ -108,7 +108,14 @@ object FirebaseManager {
         return try {
             val ref = freedomWallCollection.document()
             val authorUid = auth.currentUser?.uid ?: ""
-            ref.set(post.copy(id = ref.id, authorUid = authorUid)).await()
+            val profile = getUserProfile(authorUid)
+            
+            ref.set(post.copy(
+                id = ref.id, 
+                authorUid = authorUid,
+                authorName = profile?.name ?: "User",
+                authorIconName = profile?.profileIconName ?: "Person"
+            )).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

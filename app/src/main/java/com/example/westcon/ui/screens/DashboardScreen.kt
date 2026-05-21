@@ -13,8 +13,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,9 +41,10 @@ fun DashboardScreen(
     onNotificationClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    onMessageClick: (String, String) -> Unit = { _, _ -> }
+    onMessageClick: (String, String) -> Unit = { _, _ -> },
+    onProfileClick: (String) -> Unit = {}
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showPostSkillDialog by remember { mutableStateOf(false) }
     var showPostFreedomDialog by remember { mutableStateOf(false) }
     var skillToExchange by remember { mutableStateOf<com.example.westcon.data.SkillPost?>(null) }
@@ -93,9 +96,10 @@ fun DashboardScreen(
                             val chatId = if (currentUid < authorUid) "${currentUid}_${authorUid}" else "${authorUid}_$currentUid"
                             onMessageClick(chatId, authorName)
                         }
-                    }
+                    },
+                    onProfileClick = onProfileClick
                 )
-                1 -> FreedomWallScreen()
+                1 -> FreedomWallScreen(onProfileClick = onProfileClick)
                 2 -> MessageScreen(onMessageClick = onMessageClick)
                 3 -> ProfileScreen(onLogoutClick = onLogoutClick)
                 else -> {
@@ -447,7 +451,8 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
 fun HomeFeed(
     onPostClick: () -> Unit = {},
     onExchangeClick: (com.example.westcon.data.SkillPost) -> Unit = {},
-    onMessageClick: (String, String) -> Unit = { _, _ -> }
+    onMessageClick: (String, String) -> Unit = { _, _ -> },
+    onProfileClick: (String) -> Unit = {}
 ) {
     val posts by FirebaseManager.getSkillPosts().collectAsState(initial = emptyList())
     val currentUid = FirebaseManager.getCurrentUser()?.uid
@@ -504,7 +509,8 @@ fun HomeFeed(
                 post = post,
                 isOwnPost = post.authorUid == currentUid,
                 onExchangeClick = { onExchangeClick(post) },
-                onMessageClick = { onMessageClick(post.authorUid, post.authorName) }
+                onMessageClick = { onMessageClick(post.authorUid, post.authorName) },
+                onProfileClick = { onProfileClick(post.authorUid) }
             )
         }
         
@@ -788,7 +794,8 @@ fun SkillPostCard(
     post: com.example.westcon.data.SkillPost,
     isOwnPost: Boolean = false,
     onExchangeClick: () -> Unit = {},
-    onMessageClick: () -> Unit = {}
+    onMessageClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -833,7 +840,13 @@ fun SkillPostCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(enabled = !post.isAnonymous) { onProfileClick() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
                             .size(44.dp)

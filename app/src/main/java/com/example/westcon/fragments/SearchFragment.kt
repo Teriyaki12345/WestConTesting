@@ -7,7 +7,10 @@ class SearchFragment : BaseFragment() {
     @Composable
     override fun ScreenContent() {
         SearchScreen(
-            onBackClick = { parentFragmentManager.popBackStack() }
+            onBackClick = { parentFragmentManager.popBackStack() },
+            onProfileClick = { userId ->
+                navigateTo(ProfileFragment.newInstance(userId))
+            }
         )
     }
 }

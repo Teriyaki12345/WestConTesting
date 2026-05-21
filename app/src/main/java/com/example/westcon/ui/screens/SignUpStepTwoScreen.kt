@@ -287,7 +287,7 @@ fun SignUpStepTwoScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .verticalScroll(rememberScrollState())
+                        .       verticalScroll(rememberScrollState())
                 ) {
                     Text(
                         text = "Please confirm\nyour details",

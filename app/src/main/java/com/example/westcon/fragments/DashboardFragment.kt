@@ -11,10 +11,13 @@ class DashboardFragment : BaseFragment() {
             onSearchClick = { navigateTo(SearchFragment()) },
             onLogoutClick = {
                 com.example.westcon.data.FirebaseManager.logout()
-                navigateTo(LandingFragment())
+                clearBackStackAndNavigate(LandingFragment())
             },
             onMessageClick = { chatId, userName ->
                 navigateTo(ChatDetailFragment.newInstance(chatId, userName))
+            },
+            onProfileClick = { userId ->
+                navigateTo(ProfileFragment.newInstance(userId))
             }
         )
     }
