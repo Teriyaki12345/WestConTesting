@@ -131,7 +131,13 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Get Started", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Get Started",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = MomotrustFontFamily
+                    )
                 }
             } else {
                 TextButton(
@@ -141,7 +147,12 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                         }
                     }
                 ) {
-                    Text("Next", color = WestconDarkBlue, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Next",
+                        color = WestconDarkBlue,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = MomotrustFontFamily
+                    )
                 }
             }
         }

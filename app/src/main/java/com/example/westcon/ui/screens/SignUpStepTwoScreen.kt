@@ -129,7 +129,7 @@ fun SignUpStepTwoScreen(
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF001229))
                 ) {
-                    Text("Continue", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                    Text("Continue", color = WestconYellow, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                 }
             } else if (step == 1) {
                 Text(
@@ -202,7 +202,7 @@ fun SignUpStepTwoScreen(
                     if (isLoading) {
                         CircularProgressIndicator(color = WestconYellow, modifier = Modifier.size(24.dp))
                     } else {
-                        Text("Next", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                        Text("Next", color = WestconYellow, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                     }
                 }
             } else if (step == 2) {
@@ -273,7 +273,7 @@ fun SignUpStepTwoScreen(
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF001229))
                 ) {
-                    Text("Review Details", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                    Text("Review Details", color = WestconYellow, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                 }
                 
                 TextButton(
@@ -400,7 +400,7 @@ fun SignUpStepTwoScreen(
                         if (isLoading) {
                             CircularProgressIndicator(color = WestconYellow, modifier = Modifier.size(24.dp))
                         } else {
-                            Text("Confirm & Finish", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                            Text("Confirm & Finish", color = WestconYellow, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                         }
                     }
                     

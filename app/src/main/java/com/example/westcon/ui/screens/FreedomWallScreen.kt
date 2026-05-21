@@ -223,9 +223,8 @@ fun PostFreedomDialog(onDismiss: () -> Unit) {
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-                        else Text("Post")
-                    }
-                }
+                        else Text("Post", color = Color.White)
+                    }                }
             }
         }
     }

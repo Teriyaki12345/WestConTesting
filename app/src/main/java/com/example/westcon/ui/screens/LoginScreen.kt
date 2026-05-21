@@ -145,7 +145,7 @@ fun LoginScreen(onBackClick: () -> Unit, onLoginSuccess: () -> Unit) {
                     Text(
                         "Enter WESTCON",
                         color = WestconYellow,
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = MomotrustFontFamily
                     )

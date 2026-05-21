@@ -299,10 +299,12 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
                     OutlinedTextField(
                         value = title,
                         onValueChange = { if (it.length <= 40) title = it },
-                        placeholder = { Text("e.g. UI/UX Design, Calculus, Guitar") },
+                        placeholder = { Text("e.g. UI/UX Design, Calculus, Guitar", color = Color.Gray.copy(alpha = 0.5f)) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = WestconDarkBlue,
+                            unfocusedTextColor = WestconDarkBlue,
                             focusedBorderColor = WestconDarkBlue,
                             unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                         ),
@@ -368,10 +370,12 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
                     OutlinedTextField(
                         value = description,
                         onValueChange = { if (it.length <= 200) description = it },
-                        placeholder = { Text("Tell us a bit about what you can teach and how you can help others...") },
+                        placeholder = { Text("Tell us a bit about what you can teach and how you can help others...", color = Color.Gray.copy(alpha = 0.5f)) },
                         modifier = Modifier.fillMaxWidth().height(120.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = WestconDarkBlue,
+                            unfocusedTextColor = WestconDarkBlue,
                             focusedBorderColor = WestconDarkBlue,
                             unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                         )
@@ -909,9 +913,9 @@ fun SkillPostCard(
                         shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
-                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
                         Spacer(Modifier.width(8.dp))
-                        Text("Exchange", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("Exchange", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                     
                     OutlinedButton(
@@ -963,7 +967,7 @@ fun DashboardBottomNav(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     ) {
         val items = listOf(
             Triple("HOME", Icons.Default.Home, 0),
-            Triple("FREEDOM WALL", Icons.Default.EditNote, 1),
+            Triple("FREEDOM", Icons.Default.EditNote, 1),
             Triple("MESSAGES", Icons.Default.Email, 2),
             Triple("PROFILE", Icons.Default.Person, 3)
         )

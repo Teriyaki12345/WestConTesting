@@ -28,6 +28,7 @@ import com.example.westcon.data.UserProfile
 import com.example.westcon.ui.UIUtils
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.style.TextAlign
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -238,7 +239,7 @@ fun ChatInputBar(
     Surface(
         color = Color.White,
         shadowElevation = 12.dp,
-        modifier = Modifier.navigationBarsPadding().imePadding()
+        modifier = Modifier.padding(WindowInsets.ime.asPaddingValues())
     ) {
         Row(
             modifier = Modifier
@@ -299,73 +300,151 @@ fun RateUserDialog(
     var rating by remember { mutableDoubleStateOf(5.0) }
     var skillName by remember { mutableStateOf("") }
     
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { 
-            Text(
-                "Rate $otherUserName's Teaching", 
-                fontWeight = FontWeight.Bold, 
-                color = WestconDarkBlue,
-                fontFamily = MomotrustFontFamily
-            ) 
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("How would you rate the quality of the teaching session?", fontSize = 14.sp, color = Color.Gray)
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header with Icon
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(WestconYellow.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Stars,
+                        contentDescription = null,
+                        tint = WestconYellow,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
                 
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    "Rate $otherUserName's Teaching",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = WestconDarkBlue,
+                    fontFamily = MomotrustFontFamily,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    "How would you rate the quality of the teaching session?",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Star Rating Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     repeat(5) { index ->
-                        val isFilled = index < rating.toInt()
-                        IconButton(onClick = { rating = (index + 1).toDouble() }) {
+                        val isSelected = index < rating.toInt()
+                        IconButton(
+                            onClick = { rating = (index + 1).toDouble() },
+                            modifier = Modifier.size(48.dp)
+                        ) {
                             Icon(
-                                if (isFilled) Icons.Default.Star else Icons.Default.StarBorder,
+                                imageVector = if (isSelected) Icons.Default.Star else Icons.Default.StarBorder,
                                 contentDescription = null,
-                                tint = WestconYellow,
-                                modifier = Modifier.size(32.dp)
+                                tint = if (isSelected) WestconYellow else Color.LightGray.copy(alpha = 0.5f),
+                                modifier = Modifier.size(36.dp)
                             )
                         }
                     }
                 }
                 
-                Text(
-                    "${String.format("%.1f", rating)} Stars",
-                    fontWeight = FontWeight.Black,
-                    color = WestconDarkBlue,
-                    fontSize = 18.sp,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-                
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                OutlinedTextField(
-                    value = skillName,
-                    onValueChange = { skillName = it },
-                    label = { Text("What skill did you learn?") },
-                    placeholder = { Text("e.g. Kotlin, UI/UX, Guitar") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                Text(
+                    when(rating.toInt()) {
+                        1 -> "Poor"
+                        2 -> "Fair"
+                        3 -> "Good"
+                        4 -> "Very Good"
+                        5 -> "Excellent!"
+                        else -> "Excellent!"
+                    },
+                    fontWeight = FontWeight.ExtraBold,
+                    color = WestconDarkBlue,
+                    fontSize = 16.sp,
+                    fontFamily = MomotrustFontFamily
                 )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { if (skillName.isNotBlank()) onRate(rating, skillName) },
-                enabled = skillName.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Submit Rating", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { 
-                Text("Later", color = Color.Gray) 
+                
+                Spacer(modifier = Modifier.height(28.dp))
+                
+                // Skill Input
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "What skill did you learn?",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = WestconDarkBlue,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = skillName,
+                        onValueChange = { skillName = it },
+                        placeholder = { Text("e.g. Kotlin, UI/UX, Guitar", color = Color.Gray.copy(alpha = 0.5f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WestconDarkBlue,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(52.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("Later", color = Color.Gray, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Button(
+                        onClick = { if (skillName.isNotBlank()) onRate(rating, skillName) },
+                        enabled = skillName.isNotBlank(),
+                        modifier = Modifier.weight(1.5f).height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = WestconDarkBlue,
+                            disabledContainerColor = Color.LightGray.copy(alpha = 0.5f)
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                    ) {
+                        Text("Submit Rating", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
             }
         }
-    )
+    }
 }

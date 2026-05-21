@@ -4,7 +4,7 @@ import com.google.firebase.Timestamp
 
 data class SkillMastery(
     val skillName: String = "",
-    val averageRating: Double = 5.0,
+    val averageRating: Double = 0.0,
     val totalRatings: Int = 0,
     val level: Int = 1 // 1: Novice, 2: Intermediate, 3: Advanced, 4: Expert, 5: Guru
 )
@@ -20,7 +20,7 @@ data class UserProfile(
     val department: String = "",
     val course: String = "",
     val year: String = "",
-    val rating: Double = 5.0,
+    val rating: Double = 0.0,
     val swaps: Int = 0,
     val about: String = "",
     val skillsToTeach: List<SkillMastery> = emptyList(),

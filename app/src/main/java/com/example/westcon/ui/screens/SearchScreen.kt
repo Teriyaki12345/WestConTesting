@@ -75,6 +75,8 @@ fun SearchScreen(onBackClick: () -> Unit) {
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFF1F5F9)),
                             colors = TextFieldDefaults.colors(
+                                focusedTextColor = WestconDarkBlue,
+                                unfocusedTextColor = WestconDarkBlue,
                                 focusedContainerColor = Color.Transparent,
                                 unfocusedContainerColor = Color.Transparent,
                                 disabledContainerColor = Color.Transparent,

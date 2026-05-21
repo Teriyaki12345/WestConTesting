@@ -9,8 +9,14 @@ import androidx.compose.ui.unit.sp
 import com.example.westcon.R
 
 val MomotrustFontFamily = FontFamily(
+    Font(R.font.momotrustsans_extralight, FontWeight.ExtraLight),
+    Font(R.font.momotrustsans_light, FontWeight.Light),
     Font(R.font.momotrustsans_regular, FontWeight.Normal),
-    Font(R.font.momotrustdisplay_regular, FontWeight.Bold)
+    Font(R.font.momotrustsans_medium, FontWeight.Medium),
+    Font(R.font.momotrustsans_semibold, FontWeight.SemiBold),
+    Font(R.font.momotrustsans_bold, FontWeight.Bold),
+    Font(R.font.momotrustsans_extrabold, FontWeight.ExtraBold),
+    Font(R.font.momotrustdisplay_regular, FontWeight.Black)
 )
 
 // Set of Material typography styles to start with

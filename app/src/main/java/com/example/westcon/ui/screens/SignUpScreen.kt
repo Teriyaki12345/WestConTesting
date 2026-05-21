@@ -128,7 +128,7 @@ fun RegisterScreen(onJoinClick: (String, String) -> Unit, onBackClick: () -> Uni
                 if (isLoading) {
                     CircularProgressIndicator(color = WestconYellow, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Join WESTCON", color = WestconYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                    Text("Join WESTCON", color = WestconYellow, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
                 }
             }
 

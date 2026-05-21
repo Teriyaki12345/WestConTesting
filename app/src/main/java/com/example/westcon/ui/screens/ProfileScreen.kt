@@ -34,23 +34,35 @@ import kotlinx.coroutines.launch
 // --- Utility Components ---
 
 @Composable
-fun ProfileStatBadge(icon: ImageVector, label: String, value: String) {
+fun ProfileStatBadge(icon: ImageVector, label: String, value: String, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
-            .width(100.dp)
+        modifier = modifier
             .shadow(elevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF))
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = WestconDarkBlue)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(value, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = WestconDarkBlue, fontFamily = MomotrustFontFamily)
-            Text(label, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Text(
+                value, 
+                fontSize = 14.sp, 
+                fontWeight = FontWeight.ExtraBold, 
+                color = WestconDarkBlue, 
+                fontFamily = MomotrustFontFamily,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                label, 
+                fontSize = 10.sp, 
+                color = Color.Gray, 
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -205,11 +217,27 @@ fun ProfileHeaderCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ProfileStatBadge(icon = Icons.Default.History, label = "Year Level", value = profile.year)
-                ProfileStatBadge(icon = Icons.Default.Star, label = "Trust Score", value = String.format("%.1f", profile.rating))
-                ProfileStatBadge(icon = Icons.Default.SwapCalls, label = "Total Swaps", value = profile.swaps.toString())
+                ProfileStatBadge(
+                    icon = Icons.Default.History, 
+                    label = "Year Level", 
+                    value = profile.year,
+                    modifier = Modifier.weight(1f)
+                )
+                val trustScore = if (profile.rating > 0) String.format("%.1f", profile.rating) else "N/A"
+                ProfileStatBadge(
+                    icon = Icons.Default.Star, 
+                    label = "Trust Score", 
+                    value = trustScore,
+                    modifier = Modifier.weight(1f)
+                )
+                ProfileStatBadge(
+                    icon = Icons.Default.SwapCalls, 
+                    label = "Total Swaps", 
+                    value = profile.swaps.toString(),
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             if (!isOwnProfile) {
@@ -282,10 +310,12 @@ fun EditableAboutSection(
                     value = aboutText, 
                     onValueChange = onAboutChange, 
                     modifier = Modifier.fillMaxWidth(), 
-                    placeholder = { Text("Tell the WestCon community what makes you unique...") }, 
+                    placeholder = { Text("Tell the WestCon community what makes you unique...", color = Color.Gray.copy(alpha = 0.5f)) }, 
                     maxLines = 5,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = WestconDarkBlue,
+                        unfocusedTextColor = WestconDarkBlue,
                         focusedBorderColor = WestconDarkBlue,
                         unfocusedBorderColor = Color(0xFFE9ECEF)
                     )
@@ -387,7 +417,8 @@ fun EditableTeachableSkillsSection(
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                                     Icon(Icons.Default.Star, contentDescription = null, tint = WestconYellow, modifier = Modifier.size(12.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(String.format("%.1f", skill.averageRating), color = WestconYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    val ratingText = if (skill.totalRatings > 0) String.format("%.1f", skill.averageRating) else "New"
+                                    Text(ratingText, color = WestconYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     MasteryBadgeSmall(skill.level)
                                 }
@@ -441,9 +472,15 @@ fun EditableLearningSkillsSection(
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
-                        value = newSkillText, onValueChange = onNewSkillChange, modifier = Modifier.weight(1f), placeholder = { Text("What do you want to learn?") }, 
+                        value = newSkillText, onValueChange = onNewSkillChange, modifier = Modifier.weight(1f), placeholder = { Text("What do you want to learn?", color = Color.Gray.copy(alpha = 0.5f)) }, 
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = WestconDarkBlue,
+                            unfocusedTextColor = WestconDarkBlue,
+                            focusedBorderColor = WestconDarkBlue,
+                            unfocusedBorderColor = Color(0xFFE9ECEF)
+                        )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
