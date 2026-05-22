@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.example.westcon.data.FirebaseManager
 import com.example.westcon.data.UserProfile
 import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.WestconPullToRefresh
 import com.example.westcon.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -604,6 +605,7 @@ fun ProfileScreen(
         }
     } else {
         val profile = userProfile!!
+        var isRefreshing by remember { mutableStateOf(false) }
         
         fun saveProfile(updatedProfile: UserProfile = profile) {
             scope.launch {
@@ -622,148 +624,163 @@ fun ProfileScreen(
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA))) {
-            // Gradient Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(WestconDarkBlue, Color(0xFF002244))
-                        )
-                    )
-            )
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = if (onBackClick != null) 200.dp else 140.dp, bottom = 48.dp)
-            ) {
-                item { 
-                    ProfileHeaderCard(
-                        profile = profile, 
-                        isOwnProfile = isOwnProfile,
-                        onIconSelect = { newIcon ->
-                            saveProfile(profile.copy(profileIconName = newIcon))
-                        },
-                        onMessageClick = { onMessageClick(profile.uid, profile.name) },
-                        onExchangeClick = { onExchangeClick(profile.uid) }
-                    ) 
-                }
-            
-                item {
-                    EditableAboutSection(
-                        isEditing = isEditingAbout && isOwnProfile,
-                        isOwnProfile = isOwnProfile,
-                        aboutText = editAboutText,
-                        onAboutChange = { editAboutText = it },
-                        onEditClick = { isEditingAbout = true },
-                        onSaveClick = { saveProfile() },
-                        onCancelClick = { editAboutText = profile.about; isEditingAbout = false }
-                    )
-                }
-
-                item {
-                    EditableTeachableSkillsSection(
-                        isEditing = isEditingTeachableSkills && isOwnProfile,
-                        isOwnProfile = isOwnProfile,
-                        skills = editTeachableSkills,
-                        newSkillText = newTeachableSkill,
-                        onNewSkillChange = { newTeachableSkill = it },
-                        onAddSkill = {
-                            if (newTeachableSkill.isNotBlank()) {
-                                editTeachableSkills.add(com.example.westcon.data.SkillMastery(skillName = newTeachableSkill.trim()))
-                                newTeachableSkill = ""
-                            }
-                        },
-                        onRemoveSkill = { editTeachableSkills.remove(it) },
-                        onEditClick = { isEditingTeachableSkills = true },
-                        onSaveClick = { saveProfile() },
-                        onCancelClick = {
-                            editTeachableSkills.clear()
-                            editTeachableSkills.addAll(profile.skillsToTeach)
-                            isEditingTeachableSkills = false
-                        }
-                    )
-                }
-
-                item {
-                    EditableLearningSkillsSection(
-                        isEditing = isEditingLearningSkills && isOwnProfile,
-                        isOwnProfile = isOwnProfile,
-                        skills = editLearningSkills,
-                        newSkillText = newLearningSkill,
-                        onNewSkillChange = { newLearningSkill = it },
-                        onAddSkill = {
-                            if (newLearningSkill.isNotBlank()) {
-                                editLearningSkills[newLearningSkill.trim()] = 0
-                                newLearningSkill = ""
-                            }
-                        },
-                        onRemoveSkill = { editLearningSkills.remove(it) },
-                        onProgressChange = { skill, progress -> editLearningSkills[skill] = progress },
-                        onEditClick = { isEditingLearningSkills = true },
-                        onSaveClick = { saveProfile() },
-                        onCancelClick = {
-                            editLearningSkills.clear()
-                            editLearningSkills.putAll(profile.skillsLearning)
-                            isEditingLearningSkills = false
-                        }
-                    )
-                }
-
-                if (isOwnProfile) {
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = onLogoutClick,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(56.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF)),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                        ) {
-                            Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFE57373))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Log Out", color = Color(0xFFE57373), fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
-                        }
+        WestconPullToRefresh(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch {
+                    val targetUid = userId ?: currentUid
+                    if (targetUid != null) {
+                        userProfile = FirebaseManager.getUserProfile(targetUid)
                     }
+                    kotlinx.coroutines.delay(1000)
+                    isRefreshing = false
                 }
             }
-
-            // Top Bar with Back Button (Drawn last to float on top)
-            if (onBackClick != null) {
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA))) {
+                // Gradient Header
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(240.dp)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color(0xCC002244), Color.Transparent)
+                                colors = listOf(WestconDarkBlue, Color(0xFF002244))
                             )
                         )
+                )
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = if (onBackClick != null) 200.dp else 140.dp, bottom = 48.dp)
                 ) {
-                    Row(
+                    item { 
+                        ProfileHeaderCard(
+                            profile = profile, 
+                            isOwnProfile = isOwnProfile,
+                            onIconSelect = { newIcon ->
+                                saveProfile(profile.copy(profileIconName = newIcon))
+                            },
+                            onMessageClick = { onMessageClick(profile.uid, profile.name) },
+                            onExchangeClick = { onExchangeClick(profile.uid) }
+                        ) 
+                    }
+                
+                    item {
+                        EditableAboutSection(
+                            isEditing = isEditingAbout && isOwnProfile,
+                            isOwnProfile = isOwnProfile,
+                            aboutText = editAboutText,
+                            onAboutChange = { editAboutText = it },
+                            onEditClick = { isEditingAbout = true },
+                            onSaveClick = { saveProfile() },
+                            onCancelClick = { editAboutText = profile.about; isEditingAbout = false }
+                        )
+                    }
+
+                    item {
+                        EditableTeachableSkillsSection(
+                            isEditing = isEditingTeachableSkills && isOwnProfile,
+                            isOwnProfile = isOwnProfile,
+                            skills = editTeachableSkills,
+                            newSkillText = newTeachableSkill,
+                            onNewSkillChange = { newTeachableSkill = it },
+                            onAddSkill = {
+                                if (newTeachableSkill.isNotBlank()) {
+                                    editTeachableSkills.add(com.example.westcon.data.SkillMastery(skillName = newTeachableSkill.trim()))
+                                    newTeachableSkill = ""
+                                }
+                            },
+                            onRemoveSkill = { editTeachableSkills.remove(it) },
+                            onEditClick = { isEditingTeachableSkills = true },
+                            onSaveClick = { saveProfile() },
+                            onCancelClick = {
+                                editTeachableSkills.clear()
+                                editTeachableSkills.addAll(profile.skillsToTeach)
+                                isEditingTeachableSkills = false
+                            }
+                        )
+                    }
+
+                    item {
+                        EditableLearningSkillsSection(
+                            isEditing = isEditingLearningSkills && isOwnProfile,
+                            isOwnProfile = isOwnProfile,
+                            skills = editLearningSkills,
+                            newSkillText = newLearningSkill,
+                            onNewSkillChange = { newLearningSkill = it },
+                            onAddSkill = {
+                                if (newLearningSkill.isNotBlank()) {
+                                    editLearningSkills[newLearningSkill.trim()] = 0
+                                    newLearningSkill = ""
+                                }
+                            },
+                            onRemoveSkill = { editLearningSkills.remove(it) },
+                            onProgressChange = { skill, progress -> editLearningSkills[skill] = progress },
+                            onEditClick = { isEditingLearningSkills = true },
+                            onSaveClick = { saveProfile() },
+                            onCancelClick = {
+                                editLearningSkills.clear()
+                                editLearningSkills.putAll(profile.skillsLearning)
+                                isEditingLearningSkills = false
+                            }
+                        )
+                    }
+
+                    if (isOwnProfile) {
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = onLogoutClick,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(56.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF)),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                            ) {
+                                Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFE57373))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Log Out", color = Color(0xFFE57373), fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                            }
+                        }
+                    }
+                }
+
+                // Top Bar with Back Button (Drawn last to float on top)
+                if (onBackClick != null) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            onClick = onBackClick,
-                            shape = CircleShape,
-                            color = Color.White,
-                            shadowElevation = 6.dp,
-                            tonalElevation = 6.dp,
-                            modifier = Modifier.size(44.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = WestconDarkBlue,
-                                    modifier = Modifier.size(24.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color(0xCC002244), Color.Transparent)
                                 )
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .statusBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                onClick = onBackClick,
+                                shape = CircleShape,
+                                color = Color.White,
+                                shadowElevation = 6.dp,
+                                tonalElevation = 6.dp,
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowBack,
+                                        contentDescription = "Back",
+                                        tint = WestconDarkBlue,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
                         }
                     }

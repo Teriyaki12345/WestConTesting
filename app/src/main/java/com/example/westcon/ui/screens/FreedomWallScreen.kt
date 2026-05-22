@@ -34,37 +34,51 @@ import kotlinx.coroutines.launch
 import com.example.westcon.data.FirebaseManager
 import com.example.westcon.data.FreedomPost
 import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.WestconPullToRefresh
 
 @Composable
 fun FreedomWallScreen(onProfileClick: (String) -> Unit = {}) {
     val posts by FirebaseManager.getFreedomPosts().collectAsState(initial = emptyList())
     val filteredPosts = remember(posts) { posts.filter { it.content.isNotBlank() } }
     val currentUid = FirebaseManager.getCurrentUser()?.uid
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF0F2F5))
+    WestconPullToRefresh(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            scope.launch {
+                kotlinx.coroutines.delay(1500)
+                isRefreshing = false
+            }
+        }
     ) {
-        FreedomWallFilters()
-        
-        if (filteredPosts.isEmpty()) {
-            EmptyFreedomWall()
-        } else {
-            LazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalItemSpacing = 12.dp
-            ) {
-                items(filteredPosts, key = { it.id }) { post ->
-                    FreedomPostCard(
-                        post = post, 
-                        isOwnPost = post.authorUid == currentUid,
-                        currentUid = currentUid ?: "",
-                        onProfileClick = { onProfileClick(post.authorUid) }
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF0F2F5))
+        ) {
+            FreedomWallFilters()
+            
+            if (filteredPosts.isEmpty()) {
+                EmptyFreedomWall()
+            } else {
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalItemSpacing = 12.dp
+                ) {
+                    items(filteredPosts, key = { it.id }) { post ->
+                        FreedomPostCard(
+                            post = post, 
+                            isOwnPost = post.authorUid == currentUid,
+                            currentUid = currentUid ?: "",
+                            onProfileClick = { onProfileClick(post.authorUid) }
+                        )
+                    }
                 }
             }
         }

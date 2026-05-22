@@ -28,71 +28,86 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.WestconPullToRefresh
+import kotlinx.coroutines.launch
 
 @Composable
 fun MessageScreen(onMessageClick: (String, String) -> Unit = { _, _ -> }) {
     val chatSummaries by com.example.westcon.data.FirebaseManager.getChatSummaries().collectAsState(initial = emptyList())
     var searchText by remember { mutableStateOf("") }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     
     val filteredSummaries = remember(chatSummaries, searchText) {
         if (searchText.isBlank()) chatSummaries
         else chatSummaries.filter { it.otherUserName.contains(searchText, ignoreCase = true) }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F9FA)) // Subtle off-white background
-    ) {
-        // Header Section
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(WestconDarkBlue, Color(0xFF002244))
-                    )
-                )
-                .padding(top = 20.dp, bottom = 28.dp)
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text(
-                    "Connect with WestCon skilled learners",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontFamily = MomotrustFontFamily
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                MessageSearchBar(
-                    value = searchText,
-                    onValueChange = { searchText = it }
-                )
+    WestconPullToRefresh(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            scope.launch {
+                kotlinx.coroutines.delay(1500)
+                isRefreshing = false
             }
         }
-        
-        if (chatSummaries.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Forum, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF8F9FA)) // Subtle off-white background
+        ) {
+            // Header Section
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(WestconDarkBlue, Color(0xFF002244))
+                        )
+                    )
+                    .padding(top = 20.dp, bottom = 28.dp)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    Text(
+                        "Connect with WestCon skilled learners",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontFamily = MomotrustFontFamily
+                    )
+                    
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("No conversations yet", color = Color.Gray, fontFamily = MomotrustFontFamily)
-                    Text("Start a skill exchange to chat!", fontSize = 12.sp, color = Color.LightGray, fontFamily = MomotrustFontFamily)
+                    
+                    MessageSearchBar(
+                        value = searchText,
+                        onValueChange = { searchText = it }
+                    )
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 32.dp)
-            ) {
-                items(filteredSummaries) { summary ->
-                    MessageItem(summary, onClick = {
-                        val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid ?: ""
-                        val chatId = if (currentUid < summary.otherUserUid) "${currentUid}_${summary.otherUserUid}" else "${summary.otherUserUid}_$currentUid"
-                        onMessageClick(chatId, summary.otherUserName)
-                    })
+            
+            if (chatSummaries.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Forum, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("No conversations yet", color = Color.Gray, fontFamily = MomotrustFontFamily)
+                        Text("Start a skill exchange to chat!", fontSize = 12.sp, color = Color.LightGray, fontFamily = MomotrustFontFamily)
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 32.dp)
+                ) {
+                    items(filteredSummaries) { summary ->
+                        MessageItem(summary, onClick = {
+                            val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid ?: ""
+                            val chatId = if (currentUid < summary.otherUserUid) "${currentUid}_${summary.otherUserUid}" else "${summary.otherUserUid}_$currentUid"
+                            onMessageClick(chatId, summary.otherUserName)
+                        })
+                    }
                 }
             }
         }

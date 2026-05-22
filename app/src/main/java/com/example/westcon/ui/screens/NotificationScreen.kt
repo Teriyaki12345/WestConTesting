@@ -34,6 +34,7 @@ import com.example.westcon.ui.theme.*
 import com.example.westcon.data.FirebaseManager
 import com.example.westcon.data.Notification
 import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.WestconPullToRefresh
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,50 +90,63 @@ fun NotificationScreen(onBackClick: () -> Unit) {
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF8FAFC))
-                .padding(paddingValues)
-        ) {
-            NotificationFilters(selectedFilter) { selectedFilter = it }
+        var isRefreshing by remember { mutableStateOf(false) }
 
-            if (isLoading && notifications.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = WestconDarkBlue)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            "Loading notifications...",
-                            color = Color.Gray,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
+        WestconPullToRefresh(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch {
+                    kotlinx.coroutines.delay(1200)
+                    isRefreshing = false
+                }
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF8FAFC))
+                    .padding(paddingValues)
+            ) {
+                NotificationFilters(selectedFilter) { selectedFilter = it }
+
+                if (isLoading && notifications.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = WestconDarkBlue)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Loading notifications...",
+                                color = Color.Gray,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                } else {
+                    if (isLoading) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            color = WestconDarkBlue,
+                            trackColor = Color(0xFFEAF4FF)
                         )
                     }
-                }
-            } else {
-                if (isLoading) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        color = WestconDarkBlue,
-                        trackColor = Color(0xFFEAF4FF)
-                    )
-                }
 
-                if (filteredNotifications.isEmpty()) {
-                    EmptyNotifications(selectedFilter)
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(filteredNotifications, key = { it.id }) { notification ->
-                            NotificationItem(notification)
+                    if (filteredNotifications.isEmpty()) {
+                        EmptyNotifications(selectedFilter)
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(filteredNotifications, key = { it.id }) { notification ->
+                                NotificationItem(notification)
+                            }
+                            item { Spacer(modifier = Modifier.height(24.dp)) }
                         }
-                        item { Spacer(modifier = Modifier.height(24.dp)) }
                     }
                 }
             }

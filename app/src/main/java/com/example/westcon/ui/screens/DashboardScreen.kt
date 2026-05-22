@@ -34,6 +34,7 @@ import com.example.westcon.ui.theme.*
 import kotlinx.coroutines.launch
 
 import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.WestconPullToRefresh
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -468,6 +469,8 @@ fun HomeFeed(
     val posts by FirebaseManager.getSkillPosts().collectAsState(initial = emptyList())
     val currentUid = FirebaseManager.getCurrentUser()?.uid
     var selectedCategory by remember { mutableStateOf("All Skills") }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val filteredPosts = remember(posts, selectedCategory) {
         posts.filterNot { it.authorName.contains("Chris Daniel Apin", ignoreCase = true) }
@@ -481,68 +484,79 @@ fun HomeFeed(
         .take(3)
         .map { it.first }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF0F2F5))
-    ) {
-        item { PostSkillCard(onClick = onPostClick) }
-        
-        if (trendingCategories.isNotEmpty()) {
-            item {
-                TrendingSection(
-                    categories = trendingCategories,
-                    onCategoryClick = { selectedCategory = it }
-                )
+    WestconPullToRefresh(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            scope.launch {
+                kotlinx.coroutines.delay(1500) // Simulate refresh
+                isRefreshing = false
             }
         }
-
-        item { 
-            CategoryChips(
-                selectedCategory = selectedCategory,
-                onCategorySelected = { selectedCategory = it }
-            ) 
-        }
-        
-        item {
-            Text(
-                if (selectedCategory == "All Skills") "Skill Marketplace" else "$selectedCategory Skills",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = WestconDarkBlue,
-                fontFamily = MomotrustFontFamily
-            )
-        }
-
-        items(filteredPosts, key = { it.id }) { post ->
-            SkillPostCard(
-                post = post,
-                isOwnPost = post.authorUid == currentUid,
-                onExchangeClick = { onExchangeClick(post) },
-                onMessageClick = { onMessageClick(post.authorUid, post.authorName) },
-                onProfileClick = { onProfileClick(post.authorUid) }
-            )
-        }
-        
-        if (filteredPosts.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "No posts found in $selectedCategory",
-                        color = Color.Gray,
-                        fontFamily = MomotrustFontFamily
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF0F2F5))
+        ) {
+            item { PostSkillCard(onClick = onPostClick) }
+            
+            if (trendingCategories.isNotEmpty()) {
+                item {
+                    TrendingSection(
+                        categories = trendingCategories,
+                        onCategoryClick = { selectedCategory = it }
                     )
                 }
             }
-        }
 
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+            item { 
+                CategoryChips(
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { selectedCategory = it }
+                ) 
+            }
+            
+            item {
+                Text(
+                    if (selectedCategory == "All Skills") "Skill Marketplace" else "$selectedCategory Skills",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = WestconDarkBlue,
+                    fontFamily = MomotrustFontFamily
+                )
+            }
+
+            items(filteredPosts, key = { it.id }) { post ->
+                SkillPostCard(
+                    post = post,
+                    isOwnPost = post.authorUid == currentUid,
+                    onExchangeClick = { onExchangeClick(post) },
+                    onMessageClick = { onMessageClick(post.authorUid, post.authorName) },
+                    onProfileClick = { onProfileClick(post.authorUid) }
+                )
+            }
+            
+            if (filteredPosts.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No posts found in $selectedCategory",
+                            color = Color.Gray,
+                            fontFamily = MomotrustFontFamily
+                        )
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
     }
 }
 

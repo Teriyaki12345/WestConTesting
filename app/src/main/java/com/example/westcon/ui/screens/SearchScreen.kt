@@ -28,6 +28,8 @@ import com.example.westcon.ui.theme.*
 import com.example.westcon.data.FirebaseManager
 import com.example.westcon.data.SkillPost
 import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.WestconPullToRefresh
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,16 +106,30 @@ fun SearchScreen(
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF8FAFC))
-                .padding(paddingValues)
+        var isRefreshing by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
+
+        WestconPullToRefresh(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch {
+                    kotlinx.coroutines.delay(1000)
+                    isRefreshing = false
+                }
+            },
+            modifier = Modifier.padding(paddingValues)
         ) {
-            if (searchQuery.isEmpty()) {
-                InitialSearchState(onCategoryClick = { searchQuery = it })
-            } else {
-                SearchResultsContent(searchQuery, filteredPosts, onProfileClick = onProfileClick)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF8FAFC))
+            ) {
+                if (searchQuery.isEmpty()) {
+                    InitialSearchState(onCategoryClick = { searchQuery = it })
+                } else {
+                    SearchResultsContent(searchQuery, filteredPosts, onProfileClick = onProfileClick)
+                }
             }
         }
     }

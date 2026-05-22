@@ -26,6 +26,7 @@ import com.example.westcon.data.FirebaseManager
 import com.example.westcon.data.Message
 import com.example.westcon.data.UserProfile
 import com.example.westcon.ui.UIUtils
+import com.example.westcon.ui.WestconPullToRefresh
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +54,8 @@ fun ChatDetailScreen(
         val otherUid = chatId.split("_").find { it != currentUid } ?: ""
         if (otherUid.isNotEmpty()) {
             otherUserProfile = FirebaseManager.getUserProfile(otherUid)
+            // Mark chat as read
+            FirebaseManager.markChatAsRead(otherUid)
         }
     }
 
@@ -154,20 +157,33 @@ fun ChatDetailScreen(
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .background(Color(0xFFF1F3F5)) // WhatsApp-style subtle background
+        var isRefreshing by remember { mutableStateOf(false) }
+
+        WestconPullToRefresh(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch {
+                    kotlinx.coroutines.delay(1000)
+                    isRefreshing = false
+                }
+            },
+            modifier = Modifier.padding(paddingValues)
         ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF1F3F5)) // WhatsApp-style subtle background
             ) {
-                items(messages) { message ->
-                    ChatBubble(message, isCurrentUser = message.senderUid == currentUser?.uid)
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(messages) { message ->
+                        ChatBubble(message, isCurrentUser = message.senderUid == currentUser?.uid)
+                    }
                 }
             }
         }

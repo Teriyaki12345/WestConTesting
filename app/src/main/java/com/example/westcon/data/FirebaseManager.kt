@@ -211,6 +211,21 @@ object FirebaseManager {
         }
     }
 
+    suspend fun markChatAsRead(otherUid: String): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Not logged in"))
+            chatSummariesCollection
+                .document(uid)
+                .collection("chats")
+                .document(otherUid)
+                .update("unreadCount", 0)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private suspend fun updateChatSummary(uid: String, otherUid: String, lastMsg: String) {
         try {
             android.util.Log.d("FirebaseManager", "=== updateChatSummary START ===")
