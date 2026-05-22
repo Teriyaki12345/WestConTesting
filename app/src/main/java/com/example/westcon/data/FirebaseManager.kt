@@ -277,6 +277,28 @@ object FirebaseManager {
         }
     }
 
+    suspend fun markAllNotificationsAsRead(): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Not logged in"))
+            val snapshot = notificationsCollection
+                .whereEqualTo("receiverUid", uid)
+                .whereEqualTo("isRead", false)
+                .get()
+                .await()
+
+            if (snapshot.isEmpty) return Result.success(Unit)
+
+            val batch = db.batch()
+            for (doc in snapshot.documents) {
+                batch.update(doc.reference, "isRead", true)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun rateUserSkill(targetUid: String, skillName: String, rating: Double): Result<Unit> {
         return try {
             val profile = getUserProfile(targetUid) ?: return Result.failure(Exception("User not found"))
@@ -351,15 +373,45 @@ object FirebaseManager {
             return@callbackFlow
         }
 
-        val subscription = notificationsCollection
+        // Primary listener: ordered by timestamp (server-side). If Firestore requires
+        // a composite index and fails, fallback to an unordered listener and sort
+        // client-side to preserve UX without needing immediate index creation.
+        var subscription: com.google.firebase.firestore.ListenerRegistration? = null
+
+        subscription = notificationsCollection
             .whereEqualTo("receiverUid", uid)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    android.util.Log.w("FirebaseManager", "Notifications query failed: ${error.message}")
+                    // Detect index-required failure and attach unordered fallback
+                    if (error.message?.contains("requires an index") == true || error.message?.contains("index") == true) {
+                        try {
+                            // remove the failing registration and attach fallback
+                            subscription?.remove()
+                        } catch (t: Throwable) { /* ignore */ }
+
+                        subscription = notificationsCollection
+                            .whereEqualTo("receiverUid", uid)
+                            .addSnapshotListener { snap2, err2 ->
+                                if (err2 != null) {
+                                    android.util.Log.e("FirebaseManager", "Fallback notifications listener failed: ${err2.message}", err2)
+                                    return@addSnapshotListener
+                                }
+                                if (snap2 != null) {
+                                    val list = snap2.toObjects(Notification::class.java).sortedByDescending { it.timestamp }
+                                    trySend(list)
+                                }
+                            }
+                    }
+                    return@addSnapshotListener
+                }
+
                 if (snapshot != null) {
                     trySend(snapshot.toObjects(Notification::class.java))
                 }
             }
-        awaitClose { subscription.remove() }
+
+        awaitClose { try { subscription?.remove() } catch (t: Throwable) { } }
     }
 }

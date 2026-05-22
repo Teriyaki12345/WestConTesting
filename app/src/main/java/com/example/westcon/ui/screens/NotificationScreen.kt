@@ -41,7 +41,12 @@ import kotlinx.coroutines.launch
 fun NotificationScreen(onBackClick: () -> Unit) {
     val notifications by FirebaseManager.getNotifications().collectAsState(initial = emptyList())
     var selectedFilter by remember { mutableStateOf("All") }
+    var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(notifications) {
+        if (isLoading) isLoading = false
+    }
 
     val filteredNotifications = remember(notifications, selectedFilter) {
         when (selectedFilter) {
@@ -74,7 +79,7 @@ fun NotificationScreen(onBackClick: () -> Unit) {
                     },
                     actions = {
                         if (notifications.any { !it.isRead }) {
-                            TextButton(onClick = { /* Mark all as read */ }) {
+                            TextButton(onClick = { scope.launch { FirebaseManager.markAllNotificationsAsRead() } }) {
                                 Text("Mark all as read", color = WestconDarkBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -91,19 +96,44 @@ fun NotificationScreen(onBackClick: () -> Unit) {
                 .padding(paddingValues)
         ) {
             NotificationFilters(selectedFilter) { selectedFilter = it }
-            
-            if (filteredNotifications.isEmpty()) {
-                EmptyNotifications(selectedFilter)
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filteredNotifications, key = { it.id }) { notification ->
-                        NotificationItem(notification)
+
+            if (isLoading && notifications.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = WestconDarkBlue)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Loading notifications...",
+                            color = Color.Gray,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                }
+            } else {
+                if (isLoading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        color = WestconDarkBlue,
+                        trackColor = Color(0xFFEAF4FF)
+                    )
+                }
+
+                if (filteredNotifications.isEmpty()) {
+                    EmptyNotifications(selectedFilter)
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(filteredNotifications, key = { it.id }) { notification ->
+                            NotificationItem(notification)
+                        }
+                        item { Spacer(modifier = Modifier.height(24.dp)) }
+                    }
                 }
             }
         }
@@ -169,6 +199,8 @@ fun NotificationItem(notification: Notification) {
     val scope = rememberCoroutineScope()
     var showAcceptConfirm by remember { mutableStateOf(false) }
     var showDeclineConfirm by remember { mutableStateOf(false) }
+    var showAcceptedDialog by remember { mutableStateOf(false) }
+    var isAccepting by remember { mutableStateOf(false) }
     
     if (showAcceptConfirm) {
         AlertDialog(
@@ -181,13 +213,14 @@ fun NotificationItem(notification: Notification) {
                 Button(
                     onClick = {
                         scope.launch {
+                            isAccepting = true
                             val currentUid = FirebaseManager.getCurrentUser()?.uid ?: ""
                             val senderUid = notification.senderUid ?: ""
                             if (currentUid.isNotEmpty() && senderUid.isNotEmpty()) {
                                 // 1. Start Chat
                                 FirebaseManager.startChat(
-                                    currentUid, 
-                                    senderUid, 
+                                    currentUid,
+                                    senderUid,
                                     "I've accepted your exchange request for ${notification.skillWanted}!"
                                 )
 
@@ -214,21 +247,58 @@ fun NotificationItem(notification: Notification) {
                                         FirebaseManager.saveUserProfile(responderProfile.copy(skillsLearning = updatedLearning))
                                     }
                                 }
-                                
+
                                 // 4. Delete Notification
                                 FirebaseManager.deleteNotification(notification.id)
                             }
+                            isAccepting = false
                             showAcceptConfirm = false
+                            showAcceptedDialog = true
                         }
                     },
+                    enabled = !isAccepting,
                     colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)
                 ) {
-                    Text("Accept")
+                    if (isAccepting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Accept")
+                    }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAcceptConfirm = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showAcceptedDialog) {
+        AlertDialog(
+            onDismissRequest = { showAcceptedDialog = false },
+            title = { Text("Exchange Accepted", fontWeight = FontWeight.Bold, color = WestconDarkBlue) },
+            text = {
+                Text(
+                    "You accepted ${notification.senderName ?: "the exchange request"}. A chat has been started so you can continue the conversation.",
+                    color = Color.DarkGray
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showAcceptedDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAcceptedDialog = false }) {
+                    Text("Close")
                 }
             }
         )
