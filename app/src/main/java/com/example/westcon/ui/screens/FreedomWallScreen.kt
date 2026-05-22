@@ -146,6 +146,8 @@ fun PostFreedomDialog(onDismiss: () -> Unit) {
                         placeholder = { Text("What's on your mind? (Keep it respectful!)", color = Color.Gray.copy(alpha = 0.7f)) },
                         modifier = Modifier.fillMaxSize(),
                         colors = TextFieldDefaults.colors(
+                            focusedTextColor = Color.DarkGray,
+                            unfocusedTextColor = Color.DarkGray,
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
                             focusedIndicatorColor = Color.Transparent,
@@ -297,6 +299,7 @@ fun FreedomPostCard(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
+            containerColor = White,
             title = { Text("Delete Post?") },
             text = { Text("Are you sure you want to delete this post? This action cannot be undone.") },
             confirmButton = {

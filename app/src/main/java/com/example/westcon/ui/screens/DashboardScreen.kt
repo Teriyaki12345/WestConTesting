@@ -144,6 +144,7 @@ fun ExchangeDialog(targetPost: com.example.westcon.data.SkillPost, onDismiss: ()
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = White,
         title = { Text("Exchange Skills", fontWeight = FontWeight.Bold, color = WestconDarkBlue, fontFamily = MomotrustFontFamily) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -193,6 +194,8 @@ fun ExchangeDialog(targetPost: com.example.westcon.data.SkillPost, onDismiss: ()
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = WestconDarkBlue,
+                        unfocusedTextColor = WestconDarkBlue,
                         focusedBorderColor = WestconDarkBlue,
                         unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                     )
@@ -239,7 +242,12 @@ fun ExchangeDialog(targetPost: com.example.westcon.data.SkillPost, onDismiss: ()
                     }
                 },
                 enabled = !isLoading && offeredSkill.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = WestconDarkBlue,
+                    contentColor = Color.White,
+                    disabledContainerColor = WestconDarkBlue.copy(alpha = 0.5f),
+                    disabledContentColor = Color.White.copy(alpha = 0.5f)
+                ),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
@@ -433,7 +441,10 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
                     },
                     enabled = !isLoading && title.isNotBlank() && description.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = WestconDarkBlue,
+                        contentColor = Color.White
+                    ),
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     if (isLoading) {
@@ -803,6 +814,7 @@ fun SkillPostCard(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
+            containerColor = White,
             title = { Text("Delete Post?") },
             text = { Text("Are you sure you want to delete this skill post?") },
             confirmButton = {

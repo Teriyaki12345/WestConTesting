@@ -53,6 +53,44 @@ fun OnboardingScreen(onFinish: () -> Unit) {
             .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(100.dp))
+
+        // Image Placeholder (Stationary)
+        Box(
+            modifier = Modifier
+                .size(280.dp)
+                .background(Color(0xFFE9ECEF), RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = com.example.westcon.R.drawable.icon),
+                contentDescription = null,
+                tint = WestconYellow,
+                modifier = Modifier.size(160.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(64.dp))
+
+        // Indicators (Stationary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(onboardingPages.size) { index ->
+                val isSelected = pagerState.currentPage == index
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .width(60.dp)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(if (isSelected) WestconDarkBlue else Color(0xFFD1D5DB))
+                )
+            }
+        }
+
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f)
@@ -61,46 +99,10 @@ fun OnboardingScreen(onFinish: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .padding(horizontal = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Top
             ) {
-                // Image Placeholder (Gray Box from Screenshot)
-                Box(
-                    modifier = Modifier
-                        .size(280.dp)
-                        .background(Color(0xFFE9ECEF), RoundedCornerShape(20.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = com.example.westcon.R.drawable.icon),
-                        contentDescription = null,
-                        tint = WestconYellow,
-                        modifier = Modifier.size(160.dp)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(64.dp))
-                
-                // Indicators (Bars from Screenshot)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(onboardingPages.size) { index ->
-                        val isSelected = pagerState.currentPage == index
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 4.dp)
-                                .width(60.dp)
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(if (isSelected) WestconDarkBlue else Color(0xFFD1D5DB))
-                        )
-                    }
-                }
-                
                 Spacer(modifier = Modifier.height(32.dp))
                 
                 Text(
@@ -119,7 +121,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(32.dp),
+                .padding(horizontal = 32.dp, vertical = 40.dp),
             contentAlignment = Alignment.Center
         ) {
             if (pagerState.currentPage == onboardingPages.size - 1) {

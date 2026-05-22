@@ -108,6 +108,7 @@ fun ProfileHeaderCard(
     if (showIconPicker) {
         AlertDialog(
             onDismissRequest = { showIconPicker = false },
+            containerColor = White,
             title = { Text("Choose an Avatar", fontFamily = MomotrustFontFamily, fontWeight = FontWeight.Bold) },
             text = {
                 LazyVerticalGrid(

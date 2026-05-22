@@ -205,6 +205,7 @@ fun NotificationItem(notification: Notification) {
     if (showAcceptConfirm) {
         AlertDialog(
             onDismissRequest = { showAcceptConfirm = false },
+            containerColor = White,
             title = { Text("Accept Exchange?", fontWeight = FontWeight.Bold, color = WestconDarkBlue) },
             text = { 
                 Text("Are you sure you want to accept this exchange? A new chat will be started with ${notification.senderName}.")
@@ -257,7 +258,10 @@ fun NotificationItem(notification: Notification) {
                         }
                     },
                     enabled = !isAccepting,
-                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = WestconDarkBlue,
+                        contentColor = Color.White
+                    )
                 ) {
                     if (isAccepting) {
                         CircularProgressIndicator(
@@ -266,7 +270,7 @@ fun NotificationItem(notification: Notification) {
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Accept")
+                        Text("Accept", color = Color.White)
                     }
                 }
             },
@@ -281,6 +285,7 @@ fun NotificationItem(notification: Notification) {
     if (showAcceptedDialog) {
         AlertDialog(
             onDismissRequest = { showAcceptedDialog = false },
+            containerColor = White,
             title = { Text("Exchange Accepted", fontWeight = FontWeight.Bold, color = WestconDarkBlue) },
             text = {
                 Text(
@@ -291,7 +296,10 @@ fun NotificationItem(notification: Notification) {
             confirmButton = {
                 Button(
                     onClick = { showAcceptedDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = WestconDarkBlue,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("OK")
                 }
@@ -307,6 +315,7 @@ fun NotificationItem(notification: Notification) {
     if (showDeclineConfirm) {
         AlertDialog(
             onDismissRequest = { showDeclineConfirm = false },
+            containerColor = White,
             title = { Text("Decline Request?", fontWeight = FontWeight.Bold, color = Color.Red) },
             text = { Text("Are you sure you want to decline this exchange request? This will remove the notification.") },
             confirmButton = {
@@ -317,7 +326,10 @@ fun NotificationItem(notification: Notification) {
                             showDeclineConfirm = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("Decline")
                 }
@@ -429,10 +441,13 @@ fun NotificationItem(notification: Notification) {
                         Button(
                             onClick = { showAcceptConfirm = true },
                             modifier = Modifier.weight(1f).height(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = WestconDarkBlue,
+                                contentColor = Color.White
+                            ),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("Accept", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("Accept", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                         OutlinedButton(
                             onClick = { showDeclineConfirm = true },
