@@ -1,6 +1,6 @@
 package com.example.westcon.ui
 
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -26,7 +26,7 @@ fun WestconPullToRefresh(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         state = state,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxSize(),
         indicator = {
             PullToRefreshDefaults.Indicator(
                 state = state,

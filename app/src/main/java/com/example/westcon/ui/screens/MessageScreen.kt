@@ -1,8 +1,6 @@
 package com.example.westcon.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,62 +51,67 @@ fun MessageScreen(onMessageClick: (String, String) -> Unit = { _, _ -> }) {
             }
         }
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF8F9FA)) // Subtle off-white background
+                .background(Color(0xFFF8F9FA))
         ) {
             // Header Section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(WestconDarkBlue, Color(0xFF002244))
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(WestconDarkBlue, Color(0xFF002244))
+                            )
                         )
-                    )
-                    .padding(top = 20.dp, bottom = 28.dp)
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    Text(
-                        "Connect with WestCon skilled learners",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontFamily = MomotrustFontFamily
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    MessageSearchBar(
-                        value = searchText,
-                        onValueChange = { searchText = it }
-                    )
+                        .padding(top = 20.dp, bottom = 28.dp)
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        Text(
+                            "Connect with WestCon skilled learners",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontFamily = MomotrustFontFamily
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        MessageSearchBar(
+                            value = searchText,
+                            onValueChange = { searchText = it }
+                        )
+                    }
                 }
             }
             
             if (chatSummaries.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Forum, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("No conversations yet", color = Color.Gray, fontFamily = MomotrustFontFamily)
-                        Text("Start a skill exchange to chat!", fontSize = 12.sp, color = Color.LightGray, fontFamily = MomotrustFontFamily)
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillParentMaxHeight(0.7f), 
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Forum, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("No conversations yet", color = Color.Gray, fontFamily = MomotrustFontFamily)
+                            Text("Start a skill exchange to chat!", fontSize = 12.sp, color = Color.LightGray, fontFamily = MomotrustFontFamily)
+                        }
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 32.dp)
-                ) {
-                    items(filteredSummaries) { summary ->
-                        MessageItem(summary, onClick = {
-                            val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid ?: ""
-                            val chatId = if (currentUid < summary.otherUserUid) "${currentUid}_${summary.otherUserUid}" else "${summary.otherUserUid}_$currentUid"
-                            onMessageClick(chatId, summary.otherUserName)
-                        })
-                    }
+                items(filteredSummaries) { summary ->
+                    MessageItem(summary, onClick = {
+                        val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid ?: ""
+                        val chatId = if (currentUid < summary.otherUserUid) "${currentUid}_${summary.otherUserUid}" else "${summary.otherUserUid}_$currentUid"
+                        onMessageClick(chatId, summary.otherUserName)
+                    })
                 }
+                item { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
     }
@@ -149,6 +152,8 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
         "COE" -> Color(0xFFFFF3E0)
         else -> Color(0xFFE9ECEF)
     }
+    
+    val isUnread = summary.unreadCount > 0
 
     Card(
         modifier = Modifier
@@ -156,8 +161,10 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isUnread) Color(0xFFF0F7FF) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isUnread) 2.dp else 1.dp)
     ) {
         Row(
             modifier = Modifier
@@ -198,13 +205,24 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         summary.otherUserName,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = if (isUnread) FontWeight.ExtraBold else FontWeight.Bold,
                         fontSize = 16.sp,
                         color = WestconDarkBlue,
                         fontFamily = MomotrustFontFamily,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    
+                    if (isUnread) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(Color.Red)
+                        )
+                    }
+                    
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         color = departmentColor,
@@ -233,9 +251,9 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
                 } else {
                     Text(
                         summary.lastMessage,
-                        color = if (summary.unreadCount > 0) Color.DarkGray else Color.Gray,
+                        color = if (isUnread) Color.DarkGray else Color.Gray,
                         fontSize = 13.sp,
-                        fontWeight = if (summary.unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -243,8 +261,13 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
             }
             
             Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp)) {
-                Text(timeStr, color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                if (summary.unreadCount > 0) {
+                Text(
+                    timeStr, 
+                    color = if (isUnread) WestconDarkBlue else Color.Gray, 
+                    fontSize = 11.sp, 
+                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Medium
+                )
+                if (isUnread) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         color = WestconYellow,
