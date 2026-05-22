@@ -110,21 +110,6 @@ fun ChatDetailScreen(
                             color = Color.White, 
                             fontFamily = MomotrustFontFamily
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF4CAF50))
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "Online", 
-                                fontSize = 11.sp, 
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
                     }
                     
                     IconButton(onClick = { showRateDialog = true }) {
@@ -139,18 +124,33 @@ fun ChatDetailScreen(
                 onMessageChange = { messageText = it },
                 onSendClick = {
                     if (messageText.isNotBlank() && currentUser != null) {
-                        val newMessage = Message(
-                            senderUid = currentUser.uid,
-                            receiverUid = "", // Handled by FirebaseManager logic
-                            text = messageText,
-                            timestamp = Timestamp.now()
-                        )
-                        scope.launch {
-                            FirebaseManager.sendMessage(newMessage, chatId)
-                            messageText = ""
+                        val currentUid = currentUser.uid
+                        val otherUid = chatId.split("_").find { it != currentUid } ?: ""
+                        
+                        android.util.Log.d("ChatDetailScreen", "Sending message - currentUid: $currentUid, otherUid: $otherUid, chatId: $chatId")
+                        
+                        if (otherUid.isNotEmpty()) {
+                            val newMessage = Message(
+                                senderUid = currentUid,
+                                receiverUid = otherUid,
+                                text = messageText,
+                                timestamp = Timestamp.now()
+                            )
+                            scope.launch {
+                                val result = FirebaseManager.sendMessage(newMessage, chatId)
+                                if (result.isSuccess) {
+                                    android.util.Log.d("ChatDetailScreen", "Message sent successfully")
+                                    messageText = ""
+                                } else {
+                                    android.util.Log.e("ChatDetailScreen", "Failed to send message: ${result.exceptionOrNull()?.message}")
+                                }
+                            }
+                        } else {
+                            android.util.Log.e("ChatDetailScreen", "Failed to extract otherUid from chatId: $chatId")
                         }
                     }
                 }
+
             )
         }
     ) { paddingValues ->

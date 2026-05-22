@@ -65,8 +65,17 @@ object FirebaseManager {
 
     suspend fun getUserProfile(uid: String): UserProfile? {
         return try {
-            usersCollection.document(uid).get().await().toObject(UserProfile::class.java)
+            android.util.Log.d("FirebaseManager", "Fetching profile for uid: $uid")
+            val snapshot = usersCollection.document(uid).get().await()
+            val profile = snapshot.toObject(UserProfile::class.java)
+            if (profile != null) {
+                android.util.Log.d("FirebaseManager", "Profile fetched successfully for $uid: name=${profile.name}")
+            } else {
+                android.util.Log.w("FirebaseManager", "Profile is null for uid: $uid, snapshot exists: ${snapshot.exists()}")
+            }
+            profile
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Error fetching profile for uid $uid: ${e.message}", e)
             null
         }
     }
@@ -175,30 +184,68 @@ object FirebaseManager {
             ref.set(msg.copy(id = ref.id)).await()
             
             // Also update chat summaries for both users
-            startChat(msg.senderUid, msg.receiverUid, msg.text)
+            try {
+                startChat(msg.senderUid, msg.receiverUid, msg.text)
+            } catch (e: Exception) {
+                // Log error but don't fail the message sending
+                android.util.Log.e("FirebaseManager", "Error updating chat summaries: ${e.message}", e)
+            }
             
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Error sending message: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     suspend fun startChat(uid: String, otherUid: String, firstMsg: String) {
-        updateChatSummary(uid, otherUid, firstMsg)
-        updateChatSummary(otherUid, uid, firstMsg)
+        try {
+            updateChatSummary(uid, otherUid, firstMsg)
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Error updating chat summary for $uid: ${e.message}", e)
+        }
+        try {
+            updateChatSummary(otherUid, uid, firstMsg)
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Error updating chat summary for $otherUid: ${e.message}", e)
+        }
     }
 
     private suspend fun updateChatSummary(uid: String, otherUid: String, lastMsg: String) {
-        val profile = getUserProfile(otherUid)
-        val summary = ChatSummary(
-            otherUserUid = otherUid,
-            otherUserName = profile?.name ?: "User",
-            otherUserIconName = profile?.profileIconName ?: "Person",
-            otherUserDept = profile?.department ?: "WVSU",
-            lastMessage = lastMsg,
-            timestamp = com.google.firebase.Timestamp.now()
-        )
-        chatSummariesCollection.document(uid).collection("chats").document(otherUid).set(summary).await()
+        try {
+            android.util.Log.d("FirebaseManager", "=== updateChatSummary START ===")
+            android.util.Log.d("FirebaseManager", "Creating chat summary for user: $uid, with other user: $otherUid")
+            
+            // Try to fetch profile, but don't fail the chat summary update if it fails
+            val profile = try {
+                android.util.Log.d("FirebaseManager", "Attempting to fetch profile for: $otherUid")
+                getUserProfile(otherUid)
+            } catch (e: Exception) {
+                android.util.Log.w("FirebaseManager", "Could not fetch profile for $otherUid: ${e.message}")
+                null
+            }
+            
+            val summary = ChatSummary(
+                otherUserUid = otherUid,
+                otherUserName = profile?.name ?: "User",
+                otherUserIconName = profile?.profileIconName ?: "Person",
+                otherUserDept = profile?.department ?: "WVSU",
+                lastMessage = lastMsg,
+                timestamp = com.google.firebase.Timestamp.now()
+            )
+            
+            val path = "chat_summaries/$uid/chats/$otherUid"
+            android.util.Log.d("FirebaseManager", "Writing chat summary to: $path")
+            android.util.Log.d("FirebaseManager", "Summary data: otherUserName=${summary.otherUserName}, lastMessage=${summary.lastMessage}")
+            
+            chatSummariesCollection.document(uid).collection("chats").document(otherUid).set(summary).await()
+            
+            android.util.Log.d("FirebaseManager", "Chat summary created successfully for $uid with $otherUid")
+            android.util.Log.d("FirebaseManager", "=== updateChatSummary END (SUCCESS) ===")
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "=== updateChatSummary END (FAILED) ===")
+            android.util.Log.e("FirebaseManager", "Failed to create chat summary for $uid: ${e.message}", e)
+        }
     }
 
     // --- Notifications ---
