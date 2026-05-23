@@ -218,7 +218,11 @@ object FirebaseManager {
                 .document(uid)
                 .collection("chats")
                 .document(otherUid)
-                .update("unreadCount", 0, "lastMessageRead", true)
+                .update(
+                    "unreadCount", 0, 
+                    "lastMessageRead", true,
+                    "isRead", true
+                )
                 .await()
             android.util.Log.d("FirebaseManager", "Marked chat as read for user=$uid otherUser=$otherUid")
             Result.success(Unit)
@@ -231,7 +235,17 @@ object FirebaseManager {
     suspend fun markChatMessagesAsRead(chatId: String): Result<Unit> {
         return try {
             val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Not logged in"))
-            val historyQuery = messagesCollection
+            
+            // Query for messages where EITHER 'read' or 'isRead' is false
+            val snapshotIsRead = messagesCollection
+                .document(chatId)
+                .collection("history")
+                .whereEqualTo("receiverUid", uid)
+                .whereEqualTo("isRead", false)
+                .get()
+                .await()
+
+            val snapshotRead = messagesCollection
                 .document(chatId)
                 .collection("history")
                 .whereEqualTo("receiverUid", uid)
@@ -239,17 +253,21 @@ object FirebaseManager {
                 .get()
                 .await()
 
-            if (historyQuery.isEmpty) {
+            val docsById = linkedMapOf<String, com.google.firebase.firestore.DocumentSnapshot>()
+            for (doc in snapshotIsRead.documents) docsById[doc.id] = doc
+            for (doc in snapshotRead.documents) docsById[doc.id] = doc
+
+            if (docsById.isEmpty()) {
                 return Result.success(Unit)
             }
 
             val batch = db.batch()
-            historyQuery.documents.forEach { doc ->
-                batch.update(doc.reference, "read", true)
+            for ((_, doc) in docsById) {
+                batch.update(doc.reference, "isRead", true, "read", true)
             }
             batch.commit().await()
 
-            android.util.Log.d("FirebaseManager", "Marked ${historyQuery.size()} messages as read for chat=$chatId and user=$uid")
+            android.util.Log.d("FirebaseManager", "Marked ${docsById.size} messages as read for chat=$chatId and user=$uid")
             Result.success(Unit)
         } catch (e: Exception) {
             android.util.Log.e("FirebaseManager", "Failed to mark messages as read for chatId=$chatId: ${e.message}", e)
@@ -289,12 +307,13 @@ object FirebaseManager {
                 timestamp = com.google.firebase.Timestamp.now(),
                 unreadCount = unreadCount,
                 lastMessageSenderUid = if (isRecipient) otherUid else uid,
-                lastMessageRead = !isRecipient
+                lastMessageRead = !isRecipient,
+                isRead = !isRecipient
             )
             
             val path = "chat_summaries/$uid/chats/$otherUid"
             android.util.Log.d("FirebaseManager", "Writing chat summary to: $path")
-            android.util.Log.d("FirebaseManager", "Summary data: otherUserName=${summary.otherUserName}, lastMessage=${summary.lastMessage}, unreadCount=${summary.unreadCount}")
+            android.util.Log.d("FirebaseManager", "Summary data: otherUserName=${summary.otherUserName}, lastMessage=${summary.lastMessage}, unreadCount=${summary.unreadCount}, isRead=${summary.isRead}")
             
             docRef.set(summary).await()
             
@@ -405,21 +424,42 @@ object FirebaseManager {
     }
 
     fun getMessages(chatId: String): Flow<List<Message>> = callbackFlow {
+        android.util.Log.d("FirebaseManager", "getMessages listener started for chatId: $chatId")
         val subscription = messagesCollection
             .document(chatId)
             .collection("history")
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    android.util.Log.e("FirebaseManager", "getMessages error for $chatId: ${error.message}")
+                    return@addSnapshotListener
+                }
                 if (snapshot != null) {
-                    trySend(snapshot.toObjects(Message::class.java))
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Message::class.java)?.apply {
+                            val data = doc.data
+                            // Handle both possible field names for robustness
+                            isRead = when {
+                                data?.get("isRead") is Boolean -> data["isRead"] as Boolean
+                                data?.get("read") is Boolean -> data["read"] as Boolean
+                                else -> isRead
+                            }
+                            readCompat = isRead
+                        }
+                    }
+                    android.util.Log.d("FirebaseManager", "getMessages snapshot update for $chatId: ${list.size} messages")
+                    trySend(list)
                 }
             }
-        awaitClose { subscription.remove() }
+        awaitClose { 
+            android.util.Log.d("FirebaseManager", "getMessages listener closed for chatId: $chatId")
+            subscription.remove() 
+        }
     }
 
     fun getChatSummaries(): Flow<List<ChatSummary>> = callbackFlow {
         val uid = auth.currentUser?.uid
+        android.util.Log.d("FirebaseManager", "getChatSummaries listener started for uid: $uid")
         if (uid == null) {
             trySend(emptyList())
             awaitClose { }
@@ -431,12 +471,34 @@ object FirebaseManager {
             .collection("chats")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    android.util.Log.e("FirebaseManager", "getChatSummaries error: ${error.message}")
+                    return@addSnapshotListener
+                }
                 if (snapshot != null) {
-                    trySend(snapshot.toObjects(ChatSummary::class.java))
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(ChatSummary::class.java)?.apply {
+                            val data = doc.data
+                            // Robust unread detection
+                            isRead = when {
+                                data?.get("isRead") is Boolean -> data["isRead"] as Boolean
+                                data?.get("lastMessageRead") is Boolean -> data["lastMessageRead"] as Boolean
+                                else -> isRead
+                            }
+                            lastMessageRead = isRead
+                            
+                            // Log raw data for debugging
+                            android.util.Log.d("FirebaseManager", "Summary raw data: ${doc.id} -> $data")
+                        }
+                    }
+                    android.util.Log.d("FirebaseManager", "getChatSummaries snapshot update: ${list.size} summaries")
+                    trySend(list)
                 }
             }
-        awaitClose { subscription.remove() }
+        awaitClose { 
+            android.util.Log.d("FirebaseManager", "getChatSummaries listener closed")
+            subscription.remove() 
+        }
     }
 
     // --- Notifications ---
@@ -477,10 +539,10 @@ object FirebaseManager {
                                     val list = snap2.documents.mapNotNull { doc ->
                                         doc.toObject(Notification::class.java)?.apply {
                                             val docMap = doc.data
-                                            read = when {
+                                            readCompat = when {
                                                 docMap?.get("read") is Boolean -> docMap["read"] as Boolean
                                                 docMap?.get("isRead") is Boolean -> docMap["isRead"] as Boolean
-                                                else -> read
+                                                else -> readCompat
                                             }
                                         }
                                     }.sortedByDescending { it.timestamp }
@@ -495,10 +557,10 @@ object FirebaseManager {
                     val list = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Notification::class.java)?.apply {
                             val docMap = doc.data
-                            read = when {
+                            readCompat = when {
                                 docMap?.get("read") is Boolean -> docMap["read"] as Boolean
                                 docMap?.get("isRead") is Boolean -> docMap["isRead"] as Boolean
-                                else -> read
+                                else -> readCompat
                             }
                         }
                     }

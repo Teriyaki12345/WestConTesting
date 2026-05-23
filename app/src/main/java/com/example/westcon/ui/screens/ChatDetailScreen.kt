@@ -22,9 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.westcon.ui.theme.*
-import com.example.westcon.data.FirebaseManager
-import com.example.westcon.data.Message
-import com.example.westcon.data.UserProfile
+import com.example.westcon.data.*
 import com.example.westcon.ui.UIUtils
 import com.example.westcon.ui.WestconPullToRefresh
 import com.google.firebase.Timestamp
@@ -58,10 +56,18 @@ fun ChatDetailScreen(
         }
     }
 
-    // Auto-scroll to bottom when new messages arrive
-    LaunchedEffect(messages.size) {
+    // Auto-scroll to bottom when new messages arrive and mark as read
+    LaunchedEffect(messages) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
+            
+            // Mark as read if the last message is from the other user and is unread
+            val lastMessage = messages.last()
+            if (lastMessage.senderUid != currentUser?.uid && !lastMessage.isActuallyRead) {
+                android.util.Log.d("ChatDetailScreen", "New unread message arrived, marking as read")
+                FirebaseManager.markChatAsRead(otherUserUid)
+                FirebaseManager.markChatMessagesAsRead(chatId)
+            }
         }
     }
 

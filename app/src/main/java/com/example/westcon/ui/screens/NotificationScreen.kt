@@ -50,7 +50,7 @@ fun NotificationScreen(onBackClick: () -> Unit) {
     val filteredNotifications = remember(notifications, selectedFilter) {
         when (selectedFilter) {
             "Requests" -> notifications.filter { it.type == "SKILL_EXCHANGE" }
-            "Unread" -> notifications.filter { !it.isRead }
+            "Unread" -> notifications.filter { !it.isActuallyRead }
             else -> notifications
         }
     }
@@ -77,7 +77,7 @@ fun NotificationScreen(onBackClick: () -> Unit) {
                         }
                     },
                     actions = {
-                        if (notifications.any { !it.isRead }) {
+                        if (notifications.any { !it.isActuallyRead }) {
                             TextButton(onClick = { scope.launch { FirebaseManager.markAllNotificationsAsRead() } }) {
                                 Text("Mark all as read", color = WestconDarkBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
@@ -369,24 +369,24 @@ fun NotificationItem(notification: Notification) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(if (!notification.isRead) 4.dp else 0.dp, RoundedCornerShape(16.dp))
+            .shadow(if (!notification.isActuallyRead) 4.dp else 0.dp, RoundedCornerShape(16.dp))
             .clickable { 
-                if (!notification.isRead) {
+                if (!notification.isActuallyRead) {
                     scope.launch { FirebaseManager.markNotificationAsRead(notification.id) }
                 }
             },
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) White else Color(0xFFEFF6FF)
+            containerColor = if (notification.isActuallyRead) White else Color(0xFFEFF6FF)
         ),
         shape = RoundedCornerShape(16.dp),
-        border = if (notification.isRead) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9)) else null
+        border = if (notification.isActuallyRead) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9)) else null
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
             // Unread Indicator
-            if (!notification.isRead) {
+            if (!notification.isActuallyRead) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)

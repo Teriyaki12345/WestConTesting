@@ -33,6 +33,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun MessageScreen(onMessageClick: (String, String, String) -> Unit = { _, _, _ -> }) {
     val chatSummaries by com.example.westcon.data.FirebaseManager.getChatSummaries().collectAsState(initial = emptyList())
+    
+    LaunchedEffect(chatSummaries) {
+        android.util.Log.d("MessageScreen", "chatSummaries updated: size=${chatSummaries.size}")
+        chatSummaries.forEach { 
+            android.util.Log.d("MessageScreen", "Summary: other=${it.otherUserName}, unread=${it.unreadCount}, lastMsg=${it.lastMessage}")
+        }
+    }
+
     val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid
     var searchText by remember { mutableStateOf("") }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -155,7 +163,7 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
         else -> Color(0xFFE9ECEF)
     }
     
-    val isUnread = summary.unreadCount > 0
+    val isUnread = !summary.isActuallyRead
 
     Card(
         modifier = Modifier
@@ -173,16 +181,15 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Max) // Fixes measurement issue so fillMaxHeight works cleanly
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Unread Indicator (Dot style like Notifications)
             if (isUnread) {
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(10.dp)
+                        .clip(CircleShape)
                         .background(WestconDarkBlue)
                 )
                 Spacer(modifier = Modifier.width(12.dp))

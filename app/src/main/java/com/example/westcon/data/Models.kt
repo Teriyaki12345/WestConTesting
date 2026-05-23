@@ -1,6 +1,7 @@
 package com.example.westcon.data
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.PropertyName
 
 data class SkillMastery(
     val skillName: String = "",
@@ -64,9 +65,13 @@ data class Message(
     val receiverUid: String = "",
     val text: String = "",
     val timestamp: Timestamp = Timestamp.now(),
-    // Firestore may store boolean fields as either "read" or "isRead" depending on older clients.
-    // Use a mutable `read` field for Firestore mapping.
-    var read: Boolean = false
+    // Firestore may store boolean fields as either "read" or "isRead".
+    // We'll use isRead as the primary field.
+    @get:PropertyName("isRead") @set:PropertyName("isRead")
+    var isRead: Boolean = false,
+    // Keep read for mapping legacy documents, but rename backing field to avoid JVM clash
+    @get:PropertyName("read") @set:PropertyName("read")
+    var readCompat: Boolean = false
 )
 
 data class ChatSummary(
@@ -78,7 +83,12 @@ data class ChatSummary(
     val timestamp: Timestamp = Timestamp.now(),
     val unreadCount: Int = 0,
     val lastMessageSenderUid: String = "",
+    // Keep lastMessageRead for compatibility
+    @get:PropertyName("lastMessageRead") @set:PropertyName("lastMessageRead")
     var lastMessageRead: Boolean = true,
+    // Add isRead for consistency with other models
+    @get:PropertyName("isRead") @set:PropertyName("isRead")
+    var isRead: Boolean = true,
     // Firestore documents might have a `typing` field (no `is` prefix). Keep a mutable `typing` field
     // for mapping.
     var typing: Boolean = false
@@ -97,13 +107,18 @@ data class Notification(
     val skillOffered: String? = null,
     val skillWanted: String? = null,
     val timestamp: Timestamp = Timestamp.now(),
-    // Firestore historically may store this field as `read` or `isRead`.
-    // Use a mutable `read` so Firestore mapping can bind it.
-    var read: Boolean = false
+    // Using isRead as primary field
+    @get:PropertyName("isRead") @set:PropertyName("isRead")
+    var isRead: Boolean = false,
+    // Keep read for mapping legacy documents, but rename backing field to avoid JVM clash
+    @get:PropertyName("read") @set:PropertyName("read")
+    var readCompat: Boolean = false
 )
 
+// Extension properties for easier access
 val SkillPost.isAnonymous: Boolean get() = anonymous
 val FreedomPost.isAnonymous: Boolean get() = anonymous
-val Message.isRead: Boolean get() = read
-val Notification.isRead: Boolean get() = read
+val Message.isActuallyRead: Boolean get() = isRead || readCompat
+val Notification.isActuallyRead: Boolean get() = isRead || readCompat
+val ChatSummary.isActuallyRead: Boolean get() = isRead && lastMessageRead && unreadCount == 0
 val ChatSummary.isTyping: Boolean get() = typing

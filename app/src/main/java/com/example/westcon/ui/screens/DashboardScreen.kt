@@ -52,7 +52,7 @@ fun DashboardScreen(
     var skillToExchange by remember { mutableStateOf<com.example.westcon.data.SkillPost?>(null) }
     
     val notifications by FirebaseManager.getNotifications().collectAsState(initial = emptyList())
-    val hasUnread = notifications.any { !it.isRead }
+    val hasUnread = notifications.any { !it.isActuallyRead }
 
     Scaffold(
         topBar = { 
