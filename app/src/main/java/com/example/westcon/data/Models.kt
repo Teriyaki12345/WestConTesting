@@ -37,7 +37,8 @@ data class SkillPost(
     val category: String = "",
     val title: String = "",
     val description: String = "",
-    val isAnonymous: Boolean = false,
+    // Firestore documents may use `anonymous` (no `is` prefix) or `isAnonymous`.
+    var anonymous: Boolean = false,
     val timestamp: Timestamp = Timestamp.now()
 )
 
@@ -53,7 +54,8 @@ data class FreedomPost(
     val colorHex: String = "#E3F2FD",
     val topComment: String? = null,
     val commentCount: Int = 0,
-    val isAnonymous: Boolean = true
+    // keep Firestore-friendly field
+    var anonymous: Boolean = true
 )
 
 data class Message(
@@ -62,7 +64,9 @@ data class Message(
     val receiverUid: String = "",
     val text: String = "",
     val timestamp: Timestamp = Timestamp.now(),
-    val isRead: Boolean = false
+    // Firestore may store boolean fields as either "read" or "isRead" depending on older clients.
+    // Use a mutable `read` field for Firestore mapping.
+    var read: Boolean = false
 )
 
 data class ChatSummary(
@@ -73,7 +77,11 @@ data class ChatSummary(
     val lastMessage: String = "",
     val timestamp: Timestamp = Timestamp.now(),
     val unreadCount: Int = 0,
-    val isTyping: Boolean = false
+    val lastMessageSenderUid: String = "",
+    var lastMessageRead: Boolean = true,
+    // Firestore documents might have a `typing` field (no `is` prefix). Keep a mutable `typing` field
+    // for mapping.
+    var typing: Boolean = false
 )
 
 data class Notification(
@@ -89,5 +97,13 @@ data class Notification(
     val skillOffered: String? = null,
     val skillWanted: String? = null,
     val timestamp: Timestamp = Timestamp.now(),
-    val isRead: Boolean = false
+    // Firestore historically may store this field as `read` or `isRead`.
+    // Use a mutable `read` so Firestore mapping can bind it.
+    var read: Boolean = false
 )
+
+val SkillPost.isAnonymous: Boolean get() = anonymous
+val FreedomPost.isAnonymous: Boolean get() = anonymous
+val Message.isRead: Boolean get() = read
+val Notification.isRead: Boolean get() = read
+val ChatSummary.isTyping: Boolean get() = typing

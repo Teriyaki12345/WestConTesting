@@ -200,12 +200,12 @@ object FirebaseManager {
 
     suspend fun startChat(uid: String, otherUid: String, firstMsg: String) {
         try {
-            updateChatSummary(uid, otherUid, firstMsg)
+            updateChatSummary(uid, otherUid, firstMsg, isRecipient = false)
         } catch (e: Exception) {
             android.util.Log.e("FirebaseManager", "Error updating chat summary for $uid: ${e.message}", e)
         }
         try {
-            updateChatSummary(otherUid, uid, firstMsg)
+            updateChatSummary(otherUid, uid, firstMsg, isRecipient = true)
         } catch (e: Exception) {
             android.util.Log.e("FirebaseManager", "Error updating chat summary for $otherUid: ${e.message}", e)
         }
@@ -218,15 +218,46 @@ object FirebaseManager {
                 .document(uid)
                 .collection("chats")
                 .document(otherUid)
-                .update("unreadCount", 0)
+                .update("unreadCount", 0, "lastMessageRead", true)
                 .await()
+            android.util.Log.d("FirebaseManager", "Marked chat as read for user=$uid otherUser=$otherUid")
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Failed to mark chat as read for otherUid=$otherUid: ${e.message}", e)
             Result.failure(e)
         }
     }
 
-    private suspend fun updateChatSummary(uid: String, otherUid: String, lastMsg: String) {
+    suspend fun markChatMessagesAsRead(chatId: String): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Not logged in"))
+            val historyQuery = messagesCollection
+                .document(chatId)
+                .collection("history")
+                .whereEqualTo("receiverUid", uid)
+                .whereEqualTo("read", false)
+                .get()
+                .await()
+
+            if (historyQuery.isEmpty) {
+                return Result.success(Unit)
+            }
+
+            val batch = db.batch()
+            historyQuery.documents.forEach { doc ->
+                batch.update(doc.reference, "read", true)
+            }
+            batch.commit().await()
+
+            android.util.Log.d("FirebaseManager", "Marked ${historyQuery.size()} messages as read for chat=$chatId and user=$uid")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Failed to mark messages as read for chatId=$chatId: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun updateChatSummary(uid: String, otherUid: String, lastMsg: String, isRecipient: Boolean) {
         try {
             android.util.Log.d("FirebaseManager", "=== updateChatSummary START ===")
             android.util.Log.d("FirebaseManager", "Creating chat summary for user: $uid, with other user: $otherUid")
@@ -239,6 +270,15 @@ object FirebaseManager {
                 android.util.Log.w("FirebaseManager", "Could not fetch profile for $otherUid: ${e.message}")
                 null
             }
+
+            val docRef = chatSummariesCollection.document(uid).collection("chats").document(otherUid)
+            val unreadCount = if (isRecipient) {
+                val existingSnapshot = docRef.get().await()
+                val existingSummary = existingSnapshot.toObject(ChatSummary::class.java)
+                (existingSummary?.unreadCount ?: 0) + 1
+            } else {
+                0
+            }
             
             val summary = ChatSummary(
                 otherUserUid = otherUid,
@@ -246,14 +286,17 @@ object FirebaseManager {
                 otherUserIconName = profile?.profileIconName ?: "Person",
                 otherUserDept = profile?.department ?: "WVSU",
                 lastMessage = lastMsg,
-                timestamp = com.google.firebase.Timestamp.now()
+                timestamp = com.google.firebase.Timestamp.now(),
+                unreadCount = unreadCount,
+                lastMessageSenderUid = if (isRecipient) otherUid else uid,
+                lastMessageRead = !isRecipient
             )
             
             val path = "chat_summaries/$uid/chats/$otherUid"
             android.util.Log.d("FirebaseManager", "Writing chat summary to: $path")
-            android.util.Log.d("FirebaseManager", "Summary data: otherUserName=${summary.otherUserName}, lastMessage=${summary.lastMessage}")
+            android.util.Log.d("FirebaseManager", "Summary data: otherUserName=${summary.otherUserName}, lastMessage=${summary.lastMessage}, unreadCount=${summary.unreadCount}")
             
-            chatSummariesCollection.document(uid).collection("chats").document(otherUid).set(summary).await()
+            docRef.set(summary).await()
             
             android.util.Log.d("FirebaseManager", "Chat summary created successfully for $uid with $otherUid")
             android.util.Log.d("FirebaseManager", "=== updateChatSummary END (SUCCESS) ===")
@@ -285,9 +328,12 @@ object FirebaseManager {
 
     suspend fun markNotificationAsRead(id: String): Result<Unit> {
         return try {
-            notificationsCollection.document(id).update("isRead", true).await()
+            // Write both field variants to support documents that use `isRead` or `read`.
+            notificationsCollection.document(id).update("isRead", true, "read", true).await()
+            android.util.Log.d("FirebaseManager", "Marked notification as read: id=$id")
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Failed to mark notification as read id=$id: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -295,21 +341,35 @@ object FirebaseManager {
     suspend fun markAllNotificationsAsRead(): Result<Unit> {
         return try {
             val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Not logged in"))
-            val snapshot = notificationsCollection
+            // Query both possible field names (`isRead` and `read`) to support documents created by different clients.
+            val snapshotIsRead = notificationsCollection
                 .whereEqualTo("receiverUid", uid)
                 .whereEqualTo("isRead", false)
                 .get()
                 .await()
 
-            if (snapshot.isEmpty) return Result.success(Unit)
+            val snapshotRead = notificationsCollection
+                .whereEqualTo("receiverUid", uid)
+                .whereEqualTo("read", false)
+                .get()
+                .await()
+
+            // Combine unique documents
+            val docsById = linkedMapOf<String, com.google.firebase.firestore.DocumentSnapshot>()
+            for (doc in snapshotIsRead.documents) docsById[doc.id] = doc
+            for (doc in snapshotRead.documents) docsById[doc.id] = doc
+
+            if (docsById.isEmpty()) return Result.success(Unit)
 
             val batch = db.batch()
-            for (doc in snapshot.documents) {
-                batch.update(doc.reference, "isRead", true)
+            for ((_, doc) in docsById) {
+                batch.update(doc.reference, "isRead", true, "read", true)
             }
             batch.commit().await()
+            android.util.Log.d("FirebaseManager", "Marked all notifications as read for uid=$uid, count=${docsById.size}")
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Failed to mark all notifications as read: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -414,7 +474,16 @@ object FirebaseManager {
                                     return@addSnapshotListener
                                 }
                                 if (snap2 != null) {
-                                    val list = snap2.toObjects(Notification::class.java).sortedByDescending { it.timestamp }
+                                    val list = snap2.documents.mapNotNull { doc ->
+                                        doc.toObject(Notification::class.java)?.apply {
+                                            val docMap = doc.data
+                                            read = when {
+                                                docMap?.get("read") is Boolean -> docMap["read"] as Boolean
+                                                docMap?.get("isRead") is Boolean -> docMap["isRead"] as Boolean
+                                                else -> read
+                                            }
+                                        }
+                                    }.sortedByDescending { it.timestamp }
                                     trySend(list)
                                 }
                             }
@@ -423,7 +492,17 @@ object FirebaseManager {
                 }
 
                 if (snapshot != null) {
-                    trySend(snapshot.toObjects(Notification::class.java))
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Notification::class.java)?.apply {
+                            val docMap = doc.data
+                            read = when {
+                                docMap?.get("read") is Boolean -> docMap["read"] as Boolean
+                                docMap?.get("isRead") is Boolean -> docMap["isRead"] as Boolean
+                                else -> read
+                            }
+                        }
+                    }
+                    trySend(list)
                 }
             }
 

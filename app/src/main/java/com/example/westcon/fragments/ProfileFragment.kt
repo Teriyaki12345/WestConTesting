@@ -35,7 +35,7 @@ class ProfileFragment : BaseFragment() {
                 val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid ?: ""
                 if (currentUid != authorUid) {
                     val chatId = if (currentUid < authorUid) "${currentUid}_${authorUid}" else "${authorUid}_$currentUid"
-                    navigateTo(ChatDetailFragment.newInstance(chatId, authorName))
+                    navigateTo(ChatDetailFragment.newInstance(chatId, authorUid, authorName))
                 }
             },
             onExchangeClick = { authorUid ->

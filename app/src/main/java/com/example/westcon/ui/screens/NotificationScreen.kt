@@ -28,6 +28,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.westcon.ui.theme.*
+import com.example.westcon.data.*
 import com.example.westcon.data.FirebaseManager
 import com.example.westcon.data.Notification
 import com.example.westcon.ui.UIUtils

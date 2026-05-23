@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.westcon.data.*
 import com.example.westcon.data.FirebaseManager
 import com.example.westcon.ui.theme.*
 import kotlinx.coroutines.launch
@@ -42,7 +43,7 @@ fun DashboardScreen(
     onNotificationClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    onMessageClick: (String, String) -> Unit = { _, _ -> },
+    onMessageClick: (String, String, String) -> Unit = { _, _, _ -> },
     onProfileClick: (String) -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -91,13 +92,7 @@ fun DashboardScreen(
                 0 -> HomeFeed(
                     onPostClick = { showPostSkillDialog = true },
                     onExchangeClick = { skillToExchange = it },
-                    onMessageClick = { authorUid, authorName ->
-                        val currentUid = FirebaseManager.getCurrentUser()?.uid ?: ""
-                        if (currentUid != authorUid) {
-                            val chatId = if (currentUid < authorUid) "${currentUid}_${authorUid}" else "${authorUid}_$currentUid"
-                            onMessageClick(chatId, authorName)
-                        }
-                    },
+                    onMessageClick = { chatId, authorName, otherUid -> onMessageClick(chatId, authorName, otherUid) },
                     onProfileClick = onProfileClick
                 )
                 1 -> FreedomWallScreen(onProfileClick = onProfileClick)
@@ -431,7 +426,7 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
                                     category = category,
                                     title = title,
                                     description = description,
-                                    isAnonymous = false
+                                    anonymous = false
                                 )
                                 
                                 FirebaseManager.postSkill(post)
@@ -463,7 +458,7 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
 fun HomeFeed(
     onPostClick: () -> Unit = {},
     onExchangeClick: (com.example.westcon.data.SkillPost) -> Unit = {},
-    onMessageClick: (String, String) -> Unit = { _, _ -> },
+    onMessageClick: (String, String, String) -> Unit = { _, _, _ -> },
     onProfileClick: (String) -> Unit = {}
 ) {
     val posts by FirebaseManager.getSkillPosts().collectAsState(initial = emptyList())
@@ -533,7 +528,13 @@ fun HomeFeed(
                     post = post,
                     isOwnPost = post.authorUid == currentUid,
                     onExchangeClick = { onExchangeClick(post) },
-                    onMessageClick = { onMessageClick(post.authorUid, post.authorName) },
+                    onMessageClick = {
+                        val uid = currentUid ?: ""
+                        if (uid != post.authorUid) {
+                            val chatId = if (uid < post.authorUid) "${uid}_${post.authorUid}" else "${post.authorUid}_$uid"
+                            onMessageClick(chatId, post.authorName, post.authorUid)
+                        }
+                    },
                     onProfileClick = { onProfileClick(post.authorUid) }
                 )
             }

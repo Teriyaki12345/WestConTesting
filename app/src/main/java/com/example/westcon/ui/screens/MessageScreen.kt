@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.westcon.ui.theme.*
+import com.example.westcon.data.*
 
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,8 +31,9 @@ import com.example.westcon.ui.WestconPullToRefresh
 import kotlinx.coroutines.launch
 
 @Composable
-fun MessageScreen(onMessageClick: (String, String) -> Unit = { _, _ -> }) {
+fun MessageScreen(onMessageClick: (String, String, String) -> Unit = { _, _, _ -> }) {
     val chatSummaries by com.example.westcon.data.FirebaseManager.getChatSummaries().collectAsState(initial = emptyList())
+    val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid
     var searchText by remember { mutableStateOf("") }
     var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -106,9 +108,9 @@ fun MessageScreen(onMessageClick: (String, String) -> Unit = { _, _ -> }) {
             } else {
                 items(filteredSummaries) { summary ->
                     MessageItem(summary, onClick = {
-                        val currentUid = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid ?: ""
-                        val chatId = if (currentUid < summary.otherUserUid) "${currentUid}_${summary.otherUserUid}" else "${summary.otherUserUid}_$currentUid"
-                        onMessageClick(chatId, summary.otherUserName)
+                        val currentUidStr = com.example.westcon.data.FirebaseManager.getCurrentUser()?.uid ?: ""
+                        val chatId = if (currentUidStr < summary.otherUserUid) "${currentUidStr}_${summary.otherUserUid}" else "${summary.otherUserUid}_$currentUidStr"
+                        onMessageClick(chatId, summary.otherUserName, summary.otherUserUid)
                     })
                 }
                 item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -159,20 +161,33 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
+            .shadow(if (isUnread) 6.dp else 0.dp, RoundedCornerShape(20.dp))
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isUnread) Color(0xFFF0F7FF) else Color.White
+            containerColor = if (isUnread) Color(0xFFEFF6FF) else Color.White
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isUnread) 2.dp else 1.dp)
+        border = if (isUnread) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFB3D4FF)) else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isUnread) 4.dp else 1.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Max) // Fixes measurement issue so fillMaxHeight works cleanly
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar with Online Status Indicator
+            if (isUnread) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(WestconDarkBlue)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
             Box(contentAlignment = Alignment.BottomEnd) {
                 Box(
                     modifier = Modifier
@@ -189,7 +204,6 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
                     )
                 }
                 
-                // Status dot (always green for demo/simulation feel)
                 Surface(
                     color = Color(0xFF4CAF50),
                     shape = CircleShape,
@@ -213,16 +227,6 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
                         overflow = TextOverflow.Ellipsis
                     )
                     
-                    if (isUnread) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color.Red)
-                        )
-                    }
-                    
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         color = departmentColor,
@@ -238,7 +242,7 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 
                 if (summary.isTyping) {
                     Text(
@@ -251,41 +255,38 @@ fun MessageItem(summary: com.example.westcon.data.ChatSummary, onClick: () -> Un
                 } else {
                     Text(
                         summary.lastMessage,
-                        color = if (isUnread) Color.DarkGray else Color.Gray,
+                        color = if (isUnread) WestconDarkBlue else Color.Gray,
                         fontSize = 13.sp,
-                        fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (isUnread) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
             
-            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp)) {
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 12.dp)) {
                 Text(
                     timeStr, 
                     color = if (isUnread) WestconDarkBlue else Color.Gray, 
                     fontSize = 11.sp, 
                     fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Medium
                 )
+                Spacer(modifier = Modifier.height(8.dp))
                 if (isUnread) {
-                    Spacer(modifier = Modifier.height(6.dp))
                     Surface(
-                        color = WestconYellow,
-                        shape = CircleShape,
-                        modifier = Modifier.size(22.dp)
+                        color = WestconDarkBlue,
+                        shape = RoundedCornerShape(12.dp),
+                        tonalElevation = 2.dp
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                summary.unreadCount.toString(),
-                                color = WestconDarkBlue,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
+                        Text(
+                            "NEW",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
                     }
                 } else {
-                    // Check icon to show message was read/delivered
-                    Spacer(modifier = Modifier.height(6.dp))
                     Icon(
                         Icons.Default.DoneAll, 
                         contentDescription = null, 

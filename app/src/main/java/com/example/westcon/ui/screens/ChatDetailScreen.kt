@@ -37,6 +37,7 @@ import java.util.Locale
 @Composable
 fun ChatDetailScreen(
     chatId: String,
+    otherUserUid: String,
     otherUserName: String,
     onBackClick: () -> Unit
 ) {
@@ -48,14 +49,12 @@ fun ChatDetailScreen(
     var messageText by remember { mutableStateOf("") }
     var showRateDialog by remember { mutableStateOf(false) }
 
-    // Fetch other user's profile for the icon
-    LaunchedEffect(chatId) {
-        val currentUid = currentUser?.uid ?: ""
-        val otherUid = chatId.split("_").find { it != currentUid } ?: ""
-        if (otherUid.isNotEmpty()) {
-            otherUserProfile = FirebaseManager.getUserProfile(otherUid)
-            // Mark chat as read
-            FirebaseManager.markChatAsRead(otherUid)
+    // Fetch other user's profile for the icon and mark the chat/messages as read.
+    LaunchedEffect(otherUserUid) {
+        if (otherUserUid.isNotBlank()) {
+            otherUserProfile = FirebaseManager.getUserProfile(otherUserUid)
+            FirebaseManager.markChatAsRead(otherUserUid)
+            FirebaseManager.markChatMessagesAsRead(chatId)
         }
     }
 
@@ -128,11 +127,11 @@ fun ChatDetailScreen(
                 onSendClick = {
                     if (messageText.isNotBlank() && currentUser != null) {
                         val currentUid = currentUser.uid
-                        val otherUid = chatId.split("_").find { it != currentUid } ?: ""
+                        val otherUid = otherUserUid
                         
                         android.util.Log.d("ChatDetailScreen", "Sending message - currentUid: $currentUid, otherUid: $otherUid, chatId: $chatId")
                         
-                        if (otherUid.isNotEmpty()) {
+                        if (otherUid.isNotBlank()) {
                             val newMessage = Message(
                                 senderUid = currentUid,
                                 receiverUid = otherUid,

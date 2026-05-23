@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.westcon.ui.theme.*
 import kotlinx.coroutines.launch
+import com.example.westcon.data.*
 import com.example.westcon.data.FirebaseManager
 import com.example.westcon.data.FreedomPost
 import com.example.westcon.ui.UIUtils
@@ -225,7 +226,7 @@ fun PostFreedomDialog(onDismiss: () -> Unit) {
                                 scope.launch {
                                     val post = FreedomPost(
                                         content = content,
-                                        isAnonymous = isAnonymous,
+                                        anonymous = isAnonymous,
                                         colorHex = selectedColor,
                                         timestamp = com.google.firebase.Timestamp.now()
                                     )

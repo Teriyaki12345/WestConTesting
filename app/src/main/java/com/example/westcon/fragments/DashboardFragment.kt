@@ -13,8 +13,8 @@ class DashboardFragment : BaseFragment() {
                 com.example.westcon.data.FirebaseManager.logout()
                 clearBackStackAndNavigate(LandingFragment())
             },
-            onMessageClick = { chatId, userName ->
-                navigateTo(ChatDetailFragment.newInstance(chatId, userName))
+            onMessageClick = { chatId, userName, otherUserUid ->
+                navigateTo(ChatDetailFragment.newInstance(chatId, otherUserUid, userName))
             },
             onProfileClick = { userId ->
                 navigateTo(ProfileFragment.newInstance(userId))
