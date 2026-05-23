@@ -258,16 +258,24 @@ fun ExchangeDialog(targetPost: com.example.westcon.data.SkillPost, onDismiss: ()
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PostSkillDialog(onDismiss: () -> Unit) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Technology") }
     var isLoading by remember { mutableStateOf(false) }
+    var userProfile by remember { mutableStateOf<com.example.westcon.data.UserProfile?>(null) }
     val scope = rememberCoroutineScope()
     
     val categories = listOf("Technology", "Academics", "Arts", "Language", "Sports", "Others")
+
+    LaunchedEffect(Unit) {
+        val currentUser = FirebaseManager.getCurrentUser()
+        if (currentUser != null) {
+            userProfile = FirebaseManager.getUserProfile(currentUser.uid)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -302,8 +310,42 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
                     }
                 }
                 
+                // Profile Skills Section
+                if (userProfile != null && userProfile!!.skillsToTeach.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Choose from your skills:", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            userProfile!!.skillsToTeach.forEach { skill ->
+                                val isSelected = title.equals(skill.skillName, ignoreCase = true)
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { title = skill.skillName },
+                                    label = { Text(skill.skillName, fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = WestconYellow,
+                                        selectedLabelColor = WestconDarkBlue,
+                                        containerColor = Color(0xFFF1F5F9),
+                                        labelColor = Color.Gray
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = isSelected,
+                                        borderColor = Color.Transparent,
+                                        selectedBorderColor = WestconYellow
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("What's your skill?", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue)
+                    Text("Skill Title", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = WestconDarkBlue)
                     OutlinedTextField(
                         value = title,
                         onValueChange = { if (it.length <= 40) title = it },
@@ -403,16 +445,16 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
                             isLoading = true
                             scope.launch {
                                 val currentUser = FirebaseManager.getCurrentUser()
-                                val profile = currentUser?.let { FirebaseManager.getUserProfile(it.uid) }
+                                val profile = userProfile ?: (currentUser?.let { FirebaseManager.getUserProfile(it.uid) })
                                 
                                 // SYNC LOGIC: Check if this skill exists on profile
-                                val existingSkill = profile?.skillsToTeach?.find { it.skillName.equals(title, ignoreCase = true) }
+                                val existingSkill = profile?.skillsToTeach?.find { it.skillName.equals(title.trim(), ignoreCase = true) }
                                 val currentMastery = existingSkill?.level ?: 1
                                 
-                                // If new skill, add to profile
+                                // If new skill, add to profile automatically
                                 if (existingSkill == null && profile != null) {
                                     val updatedSkills = profile.skillsToTeach.toMutableList().apply {
-                                        add(com.example.westcon.data.SkillMastery(skillName = title, level = 1))
+                                        add(com.example.westcon.data.SkillMastery(skillName = title.trim(), level = 1))
                                     }
                                     FirebaseManager.saveUserProfile(profile.copy(skillsToTeach = updatedSkills))
                                 }
@@ -424,7 +466,7 @@ fun PostSkillDialog(onDismiss: () -> Unit) {
                                     authorMastery = currentMastery,
                                     department = profile?.department ?: "WVSU",
                                     category = category,
-                                    title = title,
+                                    title = title.trim(),
                                     description = description,
                                     anonymous = false
                                 )
