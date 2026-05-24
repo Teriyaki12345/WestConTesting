@@ -146,6 +146,68 @@ object FirebaseManager {
         }
     }
 
+    fun getAllUserProfiles(): Flow<List<UserProfile>> = callbackFlow {
+        val subscription = usersCollection
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        // Reuse the parsing logic from getUserProfile for consistency
+                        try {
+                            val data = doc.data ?: return@mapNotNull null
+                            val skillsLearningData = data["skillsLearning"]
+                            val migratedSkillsLearning = mutableListOf<LearningSkill>()
+                            
+                            if (skillsLearningData is Map<*, *>) {
+                                skillsLearningData.forEach { (key, _) ->
+                                    if (key is String) migratedSkillsLearning.add(LearningSkill(skillName = key))
+                                }
+                            } else if (skillsLearningData is List<*>) {
+                                skillsLearningData.forEach { item ->
+                                    if (item is Map<*, *>) {
+                                        migratedSkillsLearning.add(LearningSkill(
+                                            skillName = item["skillName"] as? String ?: "",
+                                            rating = (item["rating"] as? Number)?.toDouble() ?: 0.0,
+                                            isDone = item["isDone"] as? Boolean ?: false,
+                                            exchangeId = item["exchangeId"] as? String
+                                        ))
+                                    }
+                                }
+                            }
+
+                            UserProfile(
+                                uid = doc.id,
+                                name = data["name"] as? String ?: "",
+                                email = data["email"] as? String ?: "",
+                                profileIconName = data["profileIconName"] as? String ?: "Person",
+                                department = data["department"] as? String ?: "",
+                                course = data["course"] as? String ?: "",
+                                year = data["year"] as? String ?: "",
+                                rating = (data["rating"] as? Number)?.toDouble() ?: 0.0,
+                                swaps = (data["swaps"] as? Number)?.toInt() ?: 0,
+                                about = data["about"] as? String ?: "",
+                                skillsToTeach = (data["skillsToTeach"] as? List<*>)?.mapNotNull { item ->
+                                    if (item is Map<*, *>) {
+                                        SkillMastery(
+                                            skillName = item["skillName"] as? String ?: "",
+                                            averageRating = (item["averageRating"] as? Number)?.toDouble() ?: 0.0,
+                                            totalRatings = (item["totalRatings"] as? Number)?.toInt() ?: 0,
+                                            level = (item["level"] as? Number)?.toInt() ?: 1
+                                        )
+                                    } else null
+                                } ?: emptyList(),
+                                skillsLearning = migratedSkillsLearning
+                            )
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    trySend(list)
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
     // --- Skill Exchanges ---
     private val exchangesCollection by lazy { db.collection(FirestoreCollections.EXCHANGES) }
 
