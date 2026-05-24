@@ -8,7 +8,7 @@ class LoginFragment : BaseFragment() {
     override fun ScreenContent() {
         LoginScreen(
             onBackClick = { parentFragmentManager.popBackStack() },
-            onLoginSuccess = { navigateTo(DashboardFragment()) }
+            onLoginSuccess = { clearBackStackAndNavigate(DashboardFragment()) }
         )
     }
 }

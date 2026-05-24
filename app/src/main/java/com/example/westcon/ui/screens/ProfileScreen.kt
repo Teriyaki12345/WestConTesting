@@ -248,27 +248,51 @@ fun ProfileHeaderCard(
 
             if (!isOwnProfile) {
                 Spacer(modifier = Modifier.height(28.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = onMessageClick, 
-                        modifier = Modifier.weight(1f).height(54.dp), 
+                        modifier = Modifier.weight(1f).height(50.dp), 
                         colors = ButtonDefaults.buttonColors(containerColor = WestconDarkBlue), 
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(14.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
-                        Icon(Icons.Default.Message, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            imageVector = Icons.Default.Message, 
+                            contentDescription = null, 
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Message", fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                        Text(
+                            text = "Message", 
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold, 
+                            fontFamily = MomotrustFontFamily,
+                            fontSize = 14.sp
+                        )
                     }
                     OutlinedButton(
                         onClick = onExchangeClick, 
-                        modifier = Modifier.weight(1f).height(54.dp), 
-                        border = androidx.compose.foundation.BorderStroke(2.dp, WestconDarkBlue), 
-                        shape = RoundedCornerShape(16.dp)
+                        modifier = Modifier.weight(1f).height(50.dp), 
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, WestconDarkBlue), 
+                        shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp), tint = WestconDarkBlue)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Exchange", color = WestconDarkBlue, fontWeight = FontWeight.Bold, fontFamily = MomotrustFontFamily)
+                        Icon(
+                            imageVector = Icons.Default.SwapHoriz, 
+                            contentDescription = null, 
+                            modifier = Modifier.size(18.dp), 
+                            tint = WestconDarkBlue
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Exchange", 
+                            color = WestconDarkBlue, 
+                            fontWeight = FontWeight.Bold, 
+                            fontFamily = MomotrustFontFamily,
+                            fontSize = 13.sp,
+                            maxLines = 1
+                        )
                     }
                 }
             }

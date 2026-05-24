@@ -7,7 +7,7 @@ class OnboardingFragment : BaseFragment() {
     @Composable
     override fun ScreenContent() {
         OnboardingScreen(
-            onFinish = { navigateTo(LandingFragment()) }
+            onFinish = { clearBackStackAndNavigate(LandingFragment()) }
         )
     }
 }

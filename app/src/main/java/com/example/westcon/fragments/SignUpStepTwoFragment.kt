@@ -28,7 +28,7 @@ class SignUpStepTwoFragment : BaseFragment() {
         SignUpStepTwoScreen(
             email = email,
             password = password,
-            onNextClick = { navigateTo(DashboardFragment()) }
+            onNextClick = { clearBackStackAndNavigate(DashboardFragment()) }
         )
     }
 }
