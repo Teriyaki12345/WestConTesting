@@ -42,6 +42,7 @@ object UIUtils {
             "Lightbulb" -> Icons.Default.Lightbulb
             "Medication" -> Icons.Default.Medication
             "AccountBalance" -> Icons.Default.AccountBalance
+            "VisibilityOff" -> Icons.Default.VisibilityOff
             else -> Icons.Default.Person
         }
     }

@@ -59,6 +59,17 @@ data class FreedomPost(
     var anonymous: Boolean = true
 )
 
+data class FreedomComment(
+    val id: String = "",
+    val postId: String = "",
+    val authorUid: String = "",
+    val authorName: String = "User",
+    val authorIconName: String = "Person",
+    val content: String = "",
+    val timestamp: Timestamp = Timestamp.now(),
+    var anonymous: Boolean = true
+)
+
 data class Message(
     val id: String = "",
     val senderUid: String = "",

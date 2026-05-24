@@ -177,6 +177,50 @@ object FirebaseManager {
         }
     }
 
+    suspend fun postComment(comment: FreedomComment): Result<Unit> {
+        return try {
+            val postRef = freedomWallCollection.document(comment.postId)
+            val commentRef = postRef.collection("comments").document()
+            
+            val authorUid = auth.currentUser?.uid ?: ""
+            val profile = if (!comment.anonymous) getUserProfile(authorUid) else null
+            
+            val finalComment = comment.copy(
+                id = commentRef.id,
+                authorUid = authorUid,
+                authorName = if (comment.anonymous) "Anonymous Taga-West" else (profile?.name ?: "User"),
+                authorIconName = if (comment.anonymous) "VisibilityOff" else (profile?.profileIconName ?: "Person")
+            )
+            
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(postRef)
+                val currentCommentCount = snapshot.getLong("commentCount") ?: 0
+                
+                transaction.set(commentRef, finalComment)
+                transaction.update(postRef, "commentCount", currentCommentCount + 1)
+                transaction.update(postRef, "topComment", finalComment.content)
+            }.await()
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun getComments(postId: String): Flow<List<FreedomComment>> = callbackFlow {
+        val subscription = freedomWallCollection
+            .document(postId)
+            .collection("comments")
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    trySend(snapshot.toObjects(FreedomComment::class.java))
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
     // --- Messaging ---
     suspend fun sendMessage(msg: Message, chatId: String): Result<Unit> {
         return try {

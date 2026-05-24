@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
@@ -44,6 +46,8 @@ fun FreedomWallScreen(onProfileClick: (String) -> Unit = {}) {
     val currentUid = FirebaseManager.getCurrentUser()?.uid
     var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    
+    var selectedPostIdForComments by remember { mutableStateOf<String?>(null) }
 
     WestconPullToRefresh(
         isRefreshing = isRefreshing,
@@ -77,11 +81,208 @@ fun FreedomWallScreen(onProfileClick: (String) -> Unit = {}) {
                             post = post, 
                             isOwnPost = post.authorUid == currentUid,
                             currentUid = currentUid ?: "",
-                            onProfileClick = { onProfileClick(post.authorUid) }
+                            onProfileClick = { onProfileClick(post.authorUid) },
+                            onCommentClick = { selectedPostIdForComments = post.id }
                         )
                     }
                 }
             }
+        }
+    }
+
+    if (selectedPostIdForComments != null) {
+        CommentDialog(
+            postId = selectedPostIdForComments!!,
+            onDismiss = { selectedPostIdForComments = null }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CommentDialog(postId: String, onDismiss: () -> Unit) {
+    var content by remember { mutableStateOf("") }
+    var isAnonymous by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val comments by FirebaseManager.getComments(postId).collectAsState(initial = emptyList())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.85f),
+            color = White,
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Comments",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = WestconDarkBlue,
+                        fontFamily = MomotrustFontFamily
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(modifier = Modifier.weight(1f)) {
+                    if (comments.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No comments yet.", color = Color.Gray, fontSize = 14.sp)
+                        }
+                    } else {
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(comments) { comment ->
+                                CommentItem(comment)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Switch(
+                        checked = isAnonymous,
+                        onCheckedChange = { isAnonymous = it },
+                        modifier = Modifier.scale(0.8f),
+                        colors = SwitchDefaults.colors(checkedThumbColor = WestconDarkBlue)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Anonymous", fontSize = 12.sp, color = WestconDarkBlue, fontWeight = FontWeight.Medium)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = content,
+                        onValueChange = { if (it.length <= 150) content = it },
+                        placeholder = { Text("Add a comment...", fontSize = 14.sp, color = Color.Gray) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.Black),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            focusedBorderColor = WestconDarkBlue,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        ),
+                        maxLines = 3
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            if (content.isNotBlank()) {
+                                isLoading = true
+                                scope.launch {
+                                    val comment = FreedomComment(
+                                        postId = postId,
+                                        content = content,
+                                        anonymous = isAnonymous
+                                    )
+                                    FirebaseManager.postComment(comment)
+                                    content = ""
+                                    isLoading = false
+                                }
+                            }
+                        },
+                        enabled = !isLoading && content.isNotBlank(),
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(if (content.isNotBlank()) WestconDarkBlue else Color.LightGray.copy(alpha = 0.3f), CircleShape)
+                    ) {
+                        if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = White, strokeWidth = 2.dp)
+                        else Icon(Icons.Default.Send, contentDescription = "Send", tint = White, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CommentItem(comment: FreedomComment) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(if (comment.anonymous) WestconDarkBlue else Color(0xFFF1F5F9)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (comment.anonymous) Icons.Default.VisibilityOff else UIUtils.getProfileIcon(comment.authorIconName),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (comment.anonymous) White else WestconDarkBlue
+            )
+        }
+        
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp))
+                .background(Color(0xFFF1F5F9))
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    comment.authorName,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = WestconDarkBlue
+                )
+                Text(
+                    UIUtils.formatTimestamp(comment.timestamp),
+                    fontSize = 9.sp,
+                    color = Color.Gray
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                comment.content,
+                fontSize = 13.sp,
+                color = Color.DarkGray,
+                lineHeight = 18.sp
+            )
         }
     }
 }
@@ -304,7 +505,8 @@ fun FreedomPostCard(
     post: FreedomPost, 
     isOwnPost: Boolean, 
     currentUid: String,
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onCommentClick: () -> Unit = {}
 ) {
     val cardColor = try { Color(android.graphics.Color.parseColor(post.colorHex)) } catch (e: Exception) { Color(0xFFE3F2FD) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -418,6 +620,7 @@ fun FreedomPostCard(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.White.copy(alpha = 0.4f))
                         .padding(8.dp)
+                        .clickable { onCommentClick() }
                 ) {
                     Row(verticalAlignment = Alignment.Top) {
                         Icon(
@@ -459,7 +662,7 @@ fun FreedomPostCard(
                     Row(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .clickable { /* Open comments */ }
+                            .clickable { onCommentClick() }
                             .padding(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
